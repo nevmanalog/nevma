@@ -135,6 +135,13 @@ export interface Layer {
   id: string
   name: string
   kind?: LayerKind
+  /** True only for the single background layer created by createDocument —
+   *  the document's canvas itself, rendered as a Layer for convenience. It
+   *  always stays at the bottom of the stack: never draggable, never
+   *  deletable (see LayersPanel + store.ts's removeLayer/reorderLayers).
+   *  Any other layer (including later 'base'-kind image layers added via
+   *  addImageLayer) is a normal, fully manipulable layer. */
+  isCanvas?: boolean
   visible: boolean
   locked: boolean
   width: number

@@ -114,7 +114,14 @@ export function LayersPanel() {
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const drop = (targetId: string) => {
-    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return }
+    // Belt-and-braces alongside the canvas row not being draggable/a drop
+    // target in the JSX: dragId can only be a canvas id if some future code
+    // path sets it directly, and targetId can be the canvas row via the
+    // touch path (rowIdAt just finds whatever's under the finger). Either
+    // way, the canvas never moves.
+    if (!dragId || dragId === targetId || layers[dragId]?.isCanvas || layers[targetId]?.isCanvas) {
+      setDragId(null); setOverId(null); return
+    }
     const display = [...ordered]
     const from = display.indexOf(dragId)
     const to = display.indexOf(targetId)
@@ -211,18 +218,19 @@ export function LayersPanel() {
       {visibleRows.map((id) => {
         const l = layers[id]
         const gid = layerGroups[id] ?? ''
+        const isCanvas = Boolean(l.isCanvas)
         return (
           <div
             key={id}
             data-layer-id={id}
-            className={`layer-item ${activeId === id ? 'active' : ''} ${overId === id && dragId ? 'drag-over' : ''} ${dragId === id ? 'dragging' : ''} ${gid ? 'in-group' : ''}`}
-            draggable
-            onDragStart={() => setDragId(id)}
-            onDragOver={(ev) => { ev.preventDefault(); setOverId(id) }}
+            className={`layer-item ${activeId === id ? 'active' : ''} ${overId === id && dragId ? 'drag-over' : ''} ${dragId === id ? 'dragging' : ''} ${gid ? 'in-group' : ''} ${isCanvas ? 'is-canvas' : ''}`}
+            draggable={!isCanvas}
+            onDragStart={() => { if (!isCanvas) setDragId(id) }}
+            onDragOver={(ev) => { if (isCanvas) return; ev.preventDefault(); setOverId(id) }}
             onDragLeave={() => setOverId((cur) => (cur === id ? null : cur))}
             onDrop={(ev) => { ev.preventDefault(); drop(id) }}
             onDragEnd={() => { setDragId(null); setOverId(null) }}
-            data-tip={t('shiftSelectHint')}
+            data-tip={isCanvas ? t('canvasLayerHint') : t('shiftSelectHint')}
             onClick={(ev) => {
               if (ev.shiftKey) {
                 ev.preventDefault()
@@ -241,12 +249,16 @@ export function LayersPanel() {
               onClick={(ev) => ev.stopPropagation()}
               onChange={() => toggleSelected(id)}
             />
-            <span className="drag-handle" data-tip={t('reorderHint')}
-              onTouchStart={onHandleTouchStart(id)}
-              onTouchMove={onHandleTouchMove}
-              onTouchEnd={onHandleTouchEnd}
-              onTouchCancel={() => { touchDragRef.current = null; setDragId(null); setOverId(null) }}
-            >⠿</span>
+            {isCanvas ? (
+              <span className="drag-handle drag-handle-disabled" data-tip={t('canvasLayerHint')}>⠿</span>
+            ) : (
+              <span className="drag-handle" data-tip={t('reorderHint')}
+                onTouchStart={onHandleTouchStart(id)}
+                onTouchMove={onHandleTouchMove}
+                onTouchEnd={onHandleTouchEnd}
+                onTouchCancel={() => { touchDragRef.current = null; setDragId(null); setOverId(null) }}
+              >⠿</span>
+            )}
             <Thumb id={id} token={bakeToken[id]} />
             <div className="name">
               <span className="name-text" data-tip={t('renameLayerPrompt')}
@@ -272,8 +284,9 @@ export function LayersPanel() {
                 onClick={(ev) => { ev.stopPropagation(); toggleVisible(id) }}>{l.visible ? '👁' : '🚫'}</button>
               <button className={`icon-btn ${l.locked ? 'on' : ''}`} data-tip={l.locked ? t('unlockLayer') : t('lockLayer')}
                 onClick={(ev) => { ev.stopPropagation(); toggleLocked(id) }}>{l.locked ? '🔒' : '🔓'}</button>
-              <button className="icon-btn" data-tip={t('deleteLayer')}
-                onClick={(ev) => { ev.stopPropagation(); removeLayer(id) }}>🗑</button>
+              <button className="icon-btn" data-tip={isCanvas ? t('canvasLayerHint') : t('deleteLayer')}
+                disabled={isCanvas}
+                onClick={(ev) => { ev.stopPropagation(); if (!isCanvas) removeLayer(id) }}>🗑</button>
             </div>
           </div>
         )

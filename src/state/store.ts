@@ -364,7 +364,7 @@ export const useStore = create<AppState>((set, get) => {
       originalBitmaps.set(bgId, bg)
       sourceBitmaps.set(bgId, bg)
       const layer: Layer = {
-        id: bgId, name: 'Background', kind: 'base', visible: true, locked: false,
+        id: bgId, name: 'Background', kind: 'base', isCanvas: true, visible: true, locked: false,
         width: bg.width, height: bg.height,
         transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0 },
         effects: freshEffects(), seed: Math.floor(Math.random() * 100000),
@@ -552,7 +552,16 @@ export const useStore = create<AppState>((set, get) => {
     // renderer (which maps over it in order) reflects the new stacking at once.
     reorderLayers: (order) => {
       const before = get().layerOrder
-      const after = [...order]
+      // The canvas layer is pinned at the very bottom (index 0) no matter
+      // what order the caller asks for — belt-and-braces alongside
+      // LayersPanel not making it draggable in the first place, so a stray
+      // drop (or any future caller) can never bury it under other layers or
+      // shuffle it out of its slot.
+      const layers = get().layers
+      const canvasId = before.find((id) => layers[id]?.isCanvas)
+      const after = canvasId
+        ? [canvasId, ...order.filter((id) => id !== canvasId)]
+        : [...order]
       dispatch({
         label: 'Reorder layers',
         execute() { set({ layerOrder: [...after] }) },
@@ -970,6 +979,11 @@ export const useStore = create<AppState>((set, get) => {
 
     // Delete as a reversible command: keeps bitmaps alive for undo.
     removeLayer: (id) => {
+      // The canvas itself is a Layer for rendering convenience, but it isn't
+      // a layer the person created — it's the document. Deleting it would
+      // leave the project with no base to draw on, so it's a no-op here
+      // rather than something reachable through undo/redo history.
+      if (get().layers[id]?.isCanvas) return
       const before = clone(get().layers[id])
       const index = get().layerOrder.indexOf(id)
       const wasActive = get().activeLayerId === id

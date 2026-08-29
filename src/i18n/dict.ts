@@ -79,6 +79,7 @@ export const DICT = {
   baseImage: { en: 'base image', ru: 'исходное изображение' },
   fragment: { en: 'fragment', ru: 'фрагмент' },
   reorderHint: { en: 'Drag to reorder', ru: 'Перетащите, чтобы изменить порядок' },
+  canvasLayerHint: { en: 'The canvas — always at the bottom, can\u2019t be moved or deleted', ru: 'Холст \u2014 всегда внизу, его нельзя переместить или удалить' },
 
   // canvas
   dropHere: { en: 'Drag & drop an image here', ru: 'Перетащите изображение сюда' },
