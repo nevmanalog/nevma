@@ -72,7 +72,11 @@ function LayerNode({ id }: { id: string }) {
 
   const locked = !!layer?.locked
   const selectable = activeTool === 'select'
-  const editable = selectable && !locked
+  // The canvas layer's pixels must always exactly fill the document — it's
+  // not something the person drags or resizes like a regular layer, so it's
+  // excluded from drag/transform entirely (same intent as it not being
+  // draggable in the LayersPanel).
+  const editable = selectable && !locked && !layer?.isCanvas
 
   useEffect(() => {
     const tr = trRef.current
@@ -95,9 +99,9 @@ function LayerNode({ id }: { id: string }) {
       <KImage
         ref={imgRef}
         image={displayImage}
-        x={layer.transform.x} y={layer.transform.y}
-        scaleX={layer.transform.scaleX} scaleY={layer.transform.scaleY}
-        rotation={layer.transform.rotation}
+        x={layer.isCanvas ? 0 : layer.transform.x} y={layer.isCanvas ? 0 : layer.transform.y}
+        scaleX={layer.isCanvas ? 1 : layer.transform.scaleX} scaleY={layer.isCanvas ? 1 : layer.transform.scaleY}
+        rotation={layer.isCanvas ? 0 : layer.transform.rotation}
         draggable={editable}
         shadowColor="#000"
         shadowBlur={layer.kind === 'fragment' ? 22 : 0}
