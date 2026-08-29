@@ -1,0 +1,40 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Cross-Origin Isolation — required for SharedArrayBuffer, which the
+# engine's worker pool (src/engine/sheet/pool.ts) needs to run the
+# material simulation off the main thread. Without these two headers,
+# `crossOriginIsolated` is false and the app silently falls back to a
+# synchronous, single-threaded path that blocks the UI on large images.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+
+# Static texture/asset files can be cached aggressively — they're
+# fingerprinted by Vite's build (hashed filenames) or rarely change.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/textures/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+# netlify/edge-functions/post-og.ts registers itself for /p/* via its own
+# `export const config = { path: '/p/*' }` — no entry needed here. It runs
+# before this redirect, rewrites the <head> of the passed-through index.html
+# with that post's og:title/og:image for link-preview bots, then this rule
+# still applies for everyone else so /p/<id> serves the SPA either way.
+# Requires SUPABASE_URL and SUPABASE_ANON_KEY set in Netlify's site env vars
+# (same project as VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).
+
+# SPA fallback so client-side routing (if/when added) doesn't 404 on refresh.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

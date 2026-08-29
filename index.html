@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      No `initial-scale` on purpose: with only `width` set, mobile browsers
+      compute the zoom level themselves so this fixed-width desktop layout
+      always fits the actual screen (the classic "view desktop site" trick).
+      minimum/maximum-scale still let the person pinch in for precise taps.
+    -->
+    <meta name="viewport" content="width=1180, minimum-scale=0.1, maximum-scale=5, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" type="image/png" href="./nevma-favicon.png" />
+    <!--
+      og:start / og:end mark the block that netlify/edge-functions/post-og.ts
+      swaps out for a specific post's title/image when the request is for
+      `/p/<id>`. Everywhere else (landing, community, editor, profile) these
+      generic site-wide tags are simply what gets shown in link previews.
+    -->
+    <!-- og:start -->
+    <title>Nevma</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Nevma" />
+    <meta property="og:description" content="An analog-collage editor: paper, print, scan, and every tool in between — make it, then share it." />
+    <meta property="og:image" content="/nevma-favicon.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Nevma" />
+    <!-- og:end -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
