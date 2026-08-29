@@ -12,7 +12,7 @@ export default function App() {
   const route = useRoute((s) => s.route)
   const initAuth = useAuth((s) => s.init)
 
-  useEffect(() => { initAuth() }, [initAuth])
+  useEffect(() => initAuth(), [initAuth])
 
   let page = <Landing />
   if (route === 'community') page = <Community />
