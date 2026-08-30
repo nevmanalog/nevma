@@ -86,7 +86,7 @@ export function PostModal({
     const parentId = replyTo?.id ?? null
     const body = replyTo ? `@${replyTo.name} ${trimmed}` : trimmed
     try {
-      const created = await addComment(post.id, currentUserId, body, parentId)
+      const created = await addComment(post.id, currentUserId, body, parentId, post.authorId)
       setComments((c) => [...c, {
         id: created.id,
         postId: post.id,

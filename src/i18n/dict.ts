@@ -669,6 +669,18 @@ export const DICT = {
   statusOnline: { en: 'Online', ru: 'Онлайн' },
   communityPublishHint: { en: 'Sign in to publish, like or comment.', ru: 'Войдите, чтобы публиковать, лайкать и комментировать.' },
 
+  // notifications bell (src/pages/community/NotificationsBell.tsx)
+  notificationsTitle: { en: 'Notifications', ru: 'Уведомления' },
+  notificationsMarkAllRead: { en: 'Mark all as read', ru: 'Отметить всё прочитанным' },
+  notificationsEmpty: { en: 'No notifications yet', ru: 'Пока нет уведомлений' },
+  notificationLike: { en: '{name} liked your post', ru: '{name} лайкнул(а) ваш пост' },
+  notificationComment: { en: '{name} commented on your post', ru: '{name} прокомментировал(а) ваш пост' },
+  notificationFollow: { en: '{name} started following you', ru: '{name} подписался(лась) на вас' },
+  timeJustNow: { en: 'just now', ru: 'только что' },
+  timeMinutesAgo: { en: '{n}m ago', ru: '{n} мин. назад' },
+  timeHoursAgo: { en: '{n}h ago', ru: '{n} ч. назад' },
+  timeDaysAgo: { en: '{n}d ago', ru: '{n} дн. назад' },
+
   // auth / onboarding
   signIn: { en: 'Sign in', ru: 'Войти' },
   signOut: { en: 'Sign out', ru: 'Выйти' },

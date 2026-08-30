@@ -213,6 +213,70 @@ create policy "users can remove their own comment reaction"
   using (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
+-- notifications: one row per event someone should be told about — a like,
+-- a comment, or a new follower. `actor_id` is who did it, `recipient_id` is
+-- who it's for. Written client-side right alongside the like/comment/follow
+-- itself (see src/lib/community.ts) rather than via a database trigger, so
+-- it's easy to see everywhere a notification gets created by reading the
+-- app code — no server-side magic to keep in sync separately.
+-- ---------------------------------------------------------------------------
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references public.profiles (id) on delete cascade,
+  actor_id uuid not null references public.profiles (id) on delete cascade,
+  type text not null check (type in ('like', 'comment', 'follow')),
+  post_id uuid references public.posts (id) on delete cascade,
+  comment_id uuid references public.comments (id) on delete cascade,
+  read boolean not null default false,
+  created_at timestamptz not null default now(),
+  constraint no_self_notification check (recipient_id <> actor_id)
+);
+
+create index if not exists notifications_recipient_id_created_at_idx
+  on public.notifications (recipient_id, created_at desc);
+
+alter table public.notifications enable row level security;
+
+-- Only the recipient ever reads their own notifications — unlike posts/likes/
+-- comments/follows, this isn't public data.
+drop policy if exists "users can read their own notifications" on public.notifications;
+create policy "users can read their own notifications"
+  on public.notifications for select
+  using (auth.uid() = recipient_id);
+
+-- Anyone signed in can create a notification, but only as themselves as the
+-- actor (auth.uid() = actor_id) — e.g. liking someone's post writes a
+-- notification with yourself as actor and the post's author as recipient.
+-- This mirrors how likes/comments/follows are already inserted client-side
+-- as the acting user; it does not let you impersonate another actor, only
+-- write events for their benefit.
+drop policy if exists "users can notify others of their own actions" on public.notifications;
+create policy "users can notify others of their own actions"
+  on public.notifications for insert
+  with check (auth.uid() = actor_id);
+
+-- Marking as read (single or "mark all") is an update the recipient makes
+-- on their own rows.
+drop policy if exists "users can mark their own notifications read" on public.notifications;
+create policy "users can mark their own notifications read"
+  on public.notifications for update
+  using (auth.uid() = recipient_id)
+  with check (auth.uid() = recipient_id);
+
+-- Lets the bell (src/pages/community/NotificationsBell.tsx) subscribe to new
+-- rows over Supabase Realtime instead of only polling. Guarded so re-running
+-- this script doesn't fail if it's already been added.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications'
+  ) then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- avatars: public Storage bucket for profile pictures.
 -- Files live at <user id>/<random id>.jpg (see src/lib/avatar.ts) — the RLS
 -- policies below key off that first path segment matching the caller's own

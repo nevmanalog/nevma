@@ -83,7 +83,7 @@ export function Profile() {
     setPosts((ps) => ps.map((p) => (p.id === post.id ? { ...p, likeCount: p.likeCount + (wasLiked ? -1 : 1) } : p)))
     try {
       if (wasLiked) await unlikePost(post.id, currentUser.id)
-      else await likePost(post.id, currentUser.id)
+      else await likePost(post.id, currentUser.id, post.authorId)
     } catch (err) {
       console.error('[community] toggleLike failed:', err)
     }

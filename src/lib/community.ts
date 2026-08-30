@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { newId } from '@/shared/id'
+import { notify } from './notifications'
 import type { Layer } from '@/domain/types'
 
 export interface CommunityProfile {
@@ -96,6 +97,7 @@ export async function follow(followerId: string, targetId: string): Promise<void
   if (!supabase) return
   const { error } = await supabase.from('follows').insert({ follower_id: followerId, following_id: targetId })
   if (error) throw error
+  await notify(followerId, targetId, 'follow')
 }
 
 export async function unfollow(followerId: string, targetId: string): Promise<void> {
@@ -193,10 +195,11 @@ export async function fetchLikedPostIds(userId: string, postIds: string[]): Prom
   return new Set((data ?? []).map((row) => row.post_id as string))
 }
 
-export async function likePost(postId: string, userId: string): Promise<void> {
+export async function likePost(postId: string, userId: string, postAuthorId?: string): Promise<void> {
   if (!supabase) return
   const { error } = await supabase.from('likes').insert({ post_id: postId, user_id: userId })
   if (error) throw error
+  if (postAuthorId) await notify(userId, postAuthorId, 'like', { postId })
 }
 
 export async function unlikePost(postId: string, userId: string): Promise<void> {
@@ -298,7 +301,7 @@ export async function fetchComments(postId: string, currentUserId?: string | nul
  *  be used to react to the comment, since comment_reactions.comment_id is
  *  a foreign key into this table). */
 export async function addComment(
-  postId: string, authorId: string, body: string, parentId?: string | null,
+  postId: string, authorId: string, body: string, parentId?: string | null, postAuthorId?: string,
 ): Promise<{ id: string; createdAt: string }> {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase
@@ -307,6 +310,7 @@ export async function addComment(
     .select('id, created_at')
     .single()
   if (error) throw error
+  if (postAuthorId) await notify(authorId, postAuthorId, 'comment', { postId, commentId: data.id })
   return { id: data.id, createdAt: data.created_at }
 }
 

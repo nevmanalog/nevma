@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from '@/lib/supabase'
 import { fetchFeedPosts, fetchLikedPostIds, likePost, unlikePost, isPostLiked, fetchLikeCount, createPost, fetchPostById, type CommunityPost } from '@/lib/community'
 import { useToast } from '@/state/toast'
 import { AuthWidget } from './community/AuthWidget'
+import { NotificationsBell } from './community/NotificationsBell'
 import { PublishModal } from './community/PublishModal'
 import { PostModal } from './community/PostModal'
 import { PostPresetChip } from './community/PostPresetChip'
@@ -87,7 +88,7 @@ export function Community() {
     setPosts((ps) => ps.map((p) => (p.id === post.id ? { ...p, likeCount: p.likeCount + (wasLiked ? -1 : 1) } : p)))
     try {
       if (wasLiked) await unlikePost(post.id, user.id)
-      else await likePost(post.id, user.id)
+      else await likePost(post.id, user.id, post.authorId)
     } catch (err) {
       console.error('[community] toggleLike failed:', err)
     }
@@ -154,6 +155,7 @@ export function Community() {
         <h1 className="community-title">{t('communityTitle')}</h1>
         <div className="community-topbar-actions">
           <button className="community-open-editor" onClick={() => navigate('editor')}>✂ {t('openEditor')}</button>
+          <NotificationsBell />
           <AuthWidget />
         </div>
       </div>
