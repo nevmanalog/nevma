@@ -217,6 +217,12 @@ button { font-family: inherit; touch-action: manipulation; }
 .global-tool-rail [data-tip]::after,
 .col-left [data-tip]::after {
   left: 0; transform: translateY(5px);
+  /* .panel has overflow-y: auto, which per spec forces its overflow-x to
+   * behave as auto too — so unlike a normal tooltip, anything wider than
+   * the panel's own content box (≈224px, minus ~16px for the custom
+   * scrollbar) gets silently clipped by the panel itself, not the
+   * viewport. Cap the width well under that so it can never happen. */
+  max-width: 190px;
 }
 /* Mirror image on the right column (workshop tools, presets): anchor to
  * the button's right edge and grow left, so it can't run off the right
