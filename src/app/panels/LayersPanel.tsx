@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { useStore, sourceBitmaps } from '@/state/store'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useStore, sourceBitmaps, sheetOps } from '@/state/store'
 import { useT } from '@/i18n'
+import { WORKSHOP_TOOLS } from './workshopTools'
+import type { PhysicalToolId } from '@/domain/types'
+
+// Only the real physical stations get their own tab — 'move'/'cut'/'pen'
+// don't leave a recorded op on the sheet, so a layer can never be filtered
+// by them.
+const TOOL_TABS = WORKSHOP_TOOLS.filter(
+  (t): t is typeof t & { id: PhysicalToolId } => !['move', 'cut', 'pen'].includes(t.id),
+)
 
 /** Small live thumbnail rendered from the layer's working pixels. */
 function Thumb({ id, token }: { id: string; token: number | undefined }) {
@@ -50,10 +59,34 @@ export function LayersPanel() {
   const setGroupVisible = useStore((s) => s.setGroupVisible)
   const t = useT()
 
-  // The panel lists top-most layer first; layerOrder is bottom->top.
+  // Which physical tool tab is active. 'all' shows every layer, same as
+  // before this was added. Picking a tool (e.g. Knife) narrows the list down
+  // to only the layers that actually have a recorded op of that tool.
+  const [activeTab, setActiveTab] = useState<'all' | PhysicalToolId>('all')
+  // sheetOps lives outside React state, but bakeToken bumps on every op
+  // change, so re-deriving this on each render (cheap: a handful of layers,
+  // each with a short ops list) stays in sync automatically.
+  const layerHasTool = (id: string, tool: PhysicalToolId) =>
+    (sheetOps.get(id) ?? []).some((op) => op.tool === tool)
+  const toolCounts = useMemo(() => {
+    const counts: Partial<Record<PhysicalToolId, number>> = {}
+    for (const id of layerOrder) {
+      const seen = new Set<PhysicalToolId>()
+      for (const op of sheetOps.get(id) ?? []) seen.add(op.tool)
+      seen.forEach((tool) => { counts[tool] = (counts[tool] ?? 0) + 1 })
+    }
+    return counts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layerOrder, bakeToken])
+
+  // The panel lists top-most layer first; layerOrder is bottom->top. `ordered`
+  // stays the FULL, unfiltered stack — reordering (drop() below) needs every
+  // layer's real position, even ones hidden by the tool tab. Only the render
+  // list (visibleRows) is narrowed by the active tab.
   const ordered = [...layerOrder].reverse()
+  const toolFiltered = ordered.filter((id) => activeTab === 'all' || layerHasTool(id, activeTab))
   const collapsedGroups = new Set(groups.filter((g) => g.collapsed).map((g) => g.id))
-  const visibleRows = ordered.filter((id) => {
+  const visibleRows = toolFiltered.filter((id) => {
     const g = layerGroups[id]
     return !(g && collapsedGroups.has(g))
   })
@@ -168,7 +201,9 @@ export function LayersPanel() {
     onTouchMove: () => { if (longPressRef.current) clearTimeout(longPressRef.current) },
   })
 
-  const groupMembers = (gid: string) => Object.keys(layerGroups).filter((id) => layerGroups[id] === gid && layers[id])
+  const groupMembers = (gid: string) => Object.keys(layerGroups).filter(
+    (id) => layerGroups[id] === gid && layers[id] && (activeTab === 'all' || layerHasTool(id, activeTab)),
+  )
   const groupAllVisible = (gid: string) => {
     const m = groupMembers(gid)
     return m.length > 0 && m.every((id) => layers[id].visible)
@@ -184,6 +219,31 @@ export function LayersPanel() {
         </div>
       </div>
 
+      <div className="tool-tabs">
+        <button
+          className={`tool-tab ${activeTab === 'all' ? 'active' : ''}`}
+          data-tip={t('layerTabAll')}
+          onClick={() => setActiveTab('all')}
+        >
+          <span className="tool-tab-icon">▦</span>
+        </button>
+        {TOOL_TABS.map((tool) => {
+          const count = toolCounts[tool.id] ?? 0
+          if (count === 0 && activeTab !== tool.id) return null
+          return (
+            <button
+              key={tool.id}
+              className={`tool-tab ${activeTab === tool.id ? 'active' : ''}`}
+              data-tip={t(tool.labelKey)}
+              onClick={() => setActiveTab(tool.id)}
+            >
+              <span className="tool-tab-icon">{tool.icon}</span>
+              {count > 0 && <span className="tool-tab-count">{count}</span>}
+            </button>
+          )
+        })}
+      </div>
+
       {canMerge && (
         <div className="merge-bar">
           <span className="merge-bar-text">{t('layersSelected')} {selected.size}</span>
@@ -194,9 +254,13 @@ export function LayersPanel() {
 
       <div className="layers-scroll">
       {ordered.length === 0 && <p className="hint">{t('layersEmpty')}</p>}
+      {ordered.length > 0 && activeTab !== 'all' && toolFiltered.length === 0 && (
+        <p className="hint">{t('layerTabEmpty')}</p>
+      )}
 
       {groups.map((g) => {
         const count = groupMembers(g.id).length
+        if (activeTab !== 'all' && count === 0) return null
         const allVisible = groupAllVisible(g.id)
         return (
           <div key={g.id} className={`group-head ${activeGroupId === g.id ? 'active' : ''}`}

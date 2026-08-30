@@ -496,6 +496,30 @@ button { font-family: inherit; touch-action: manipulation; }
 .hint { color: var(--text-dim); font-size: 11.5px; line-height: 1.5; }
 
 /* ============ LAYERS ============ */
+/* Tabs above the layer list: filter the stack down to only the layers that
+ * have a recorded op of one physical tool (e.g. Knife), same idea as the
+ * Workshop tool rack on the left. 'All' (the grid glyph) clears the filter. */
+.tool-tabs {
+  display: flex; flex-wrap: wrap; gap: 3px;
+  margin: -4px -10px 8px; padding: 6px 10px;
+  background: var(--surface-2); border-bottom: 1px solid var(--line);
+}
+.tool-tab {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 24px; font-size: 13px; line-height: 1;
+  background: var(--surface) !important; border: 1px solid var(--line) !important;
+  border-radius: 2px; cursor: pointer; padding: 0;
+}
+.tool-tab:hover { background: var(--surface-3) !important; }
+.tool-tab.active { background: var(--xp-select) !important; border-color: var(--xp-select) !important; }
+.tool-tab.active .tool-tab-icon { filter: brightness(0) invert(1); }
+.tool-tab-count {
+  position: absolute; top: -5px; right: -5px; min-width: 13px; height: 13px;
+  padding: 0 2px; border-radius: 20px; background: var(--xp-select); color: #fff;
+  font-size: 8.5px; font-weight: 700; line-height: 13px; text-align: center;
+}
+.tool-tab.active .tool-tab-count { background: #fff; color: var(--xp-select); }
+
 .group-head {
   display: flex; align-items: center; gap: 6px; padding: 5px 4px; margin-top: 4px;
   font-size: 11.5px; color: var(--text-dim); font-weight: 700;

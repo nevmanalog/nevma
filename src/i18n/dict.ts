@@ -76,6 +76,8 @@ export const DICT = {
   // layers
   layers: { en: 'Layers', ru: 'Слои' },
   layersEmpty: { en: 'Drop an image on the canvas, or use browse.', ru: 'Перетащите изображение на холст или выберите файл.' },
+  layerTabAll: { en: 'All layers', ru: 'Все слои' },
+  layerTabEmpty: { en: 'No layers with this tool yet.', ru: 'Пока нет слоёв с этим инструментом.' },
   baseImage: { en: 'base image', ru: 'исходное изображение' },
   fragment: { en: 'fragment', ru: 'фрагмент' },
   reorderHint: { en: 'Drag to reorder', ru: 'Перетащите, чтобы изменить порядок' },
