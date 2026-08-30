@@ -702,6 +702,39 @@ export const DICT = {
     ru: 'Мы отправили ссылку для подтверждения на вашу почту. Перейдите по ней, чтобы завершить регистрацию.',
   },
   ok: { en: 'OK', ru: 'Понятно' },
+  authAgreePrefix: { en: 'I agree to the ', ru: 'Я согласен(-на) с ' },
+  authAgreePolicyLink: { en: 'Privacy Policy', ru: 'Политикой конфиденциальности' },
+  authAgreeSuffix: { en: ' and consent to the processing of my personal data.', ru: ' и даю согласие на обработку персональных данных.' },
+  authMustAgree: { en: 'Please confirm you agree to the Privacy Policy to continue.', ru: 'Подтвердите согласие с Политикой конфиденциальности, чтобы продолжить.' },
+
+  // privacy policy modal (src/pages/community/PrivacyPolicyModal.tsx)
+  privacyPolicyTitle: { en: 'Privacy Policy', ru: 'Политика конфиденциальности' },
+  privacyPolicyUpdated: { en: 'Last updated: August 30, 2026', ru: 'Дата вступления в силу: 30.08.2026' },
+  privacyPolicyBody: {
+    en:
+      'This Privacy Policy ("Policy") describes what data Nevma ("the Service", "we") collects and processes when you register and use the site, and what rights you have over that data.\n\n' +
+      '1. What data we collect\nWhen you register, we collect your email address and password (your password is stored encrypted and is never visible to us in plain text). After registering, you may set a display name (nickname) and upload an avatar \u2014 this information is visible to other users. When you use community features, we also store the posts, comments, likes, follows, and notifications you create or trigger. Technical data (such as your IP address and browser information) may be processed automatically by our hosting and infrastructure providers as part of their standard logs.\n\n' +
+      '2. What we use this data for\nWe use your data to: create and operate your account; provide the Service\u2019s features (publishing work, likes, comments, follows, notifications); keep your account secure and prevent abuse; contact you about matters related to your account.\n\n' +
+      '3. Legal basis for processing\nWe process your personal data on the basis of the consent you give when registering, by checking the consent box. You may withdraw your consent at any time by deleting your account or contacting us using the details below; this does not affect the lawfulness of processing carried out before withdrawal.\n\n' +
+      '4. Who we share data with\nTo operate the Service we use third-party infrastructure providers \u2014 Supabase (database, authentication, file storage) and Netlify (hosting). These providers may process data on their own servers in accordance with their own privacy policies. We do not sell your data or share it with third parties for marketing purposes.\n\n' +
+      '5. How long we keep data\nData is kept for as long as your account is active. When you delete your account, your data is removed from our primary database; backups made by infrastructure providers, if any, are removed within a reasonable period under their own policies.\n\n' +
+      '6. Your rights\nYou have the right to: request access to your data; correct inaccurate data (via your profile settings); delete your account and the data associated with it; withdraw your consent to processing. To exercise these rights, contact us using the details in the "Contact" section below.\n\n' +
+      '7. Cookies and local storage\nThe Service uses your browser\u2019s local storage to keep your authentication token so you stay signed in between visits. We do not use third-party advertising or tracking cookies.\n\n' +
+      '8. Changes to this Policy\nWe may update this Policy from time to time. The date at the top of this document shows when it was last updated. We will let users know of any material changes through the Service.\n\n' +
+      '9. Contact\nFor any questions about how we process personal data, contact us at: [add your contact email here].',
+    ru:
+      'Настоящая Политика конфиденциальности («Политика») описывает, какие данные собирает и обрабатывает сервис Nevma («Сервис», «мы») при регистрации и использовании сайта, а также права пользователей в отношении этих данных.\n\n' +
+      '1. Какие данные мы собираем\nПри регистрации мы собираем адрес электронной почты и пароль (пароль хранится в зашифрованном виде и никогда не доступен нам в открытом виде). После регистрации вы можете указать отображаемое имя (никнейм) и загрузить аватар \u2014 эти данные видны другим пользователям. При использовании функций сообщества мы также храним созданные вами публикации, комментарии, лайки, подписки и связанные с ними уведомления. Технические данные (например, IP-адрес, данные браузера) могут автоматически обрабатываться нашими поставщиками хостинга и инфраструктуры в рамках их стандартных логов.\n\n' +
+      '2. Для чего мы используем данные\nДанные используются для: создания и работы вашей учётной записи; предоставления функций Сервиса (публикация работ, лайки, комментарии, подписки, уведомления); обеспечения безопасности аккаунта и предотвращения злоупотреблений; связи с вами по вопросам, связанным с аккаунтом.\n\n' +
+      '3. Правовое основание обработки\nОбработка персональных данных осуществляется на основании вашего согласия, которое вы даёте при регистрации, отмечая соответствующий флажок. Вы можете отозвать согласие в любой момент, удалив аккаунт или обратившись к нам по контактам ниже \u2014 это не влияет на законность обработки, совершённой до отзыва.\n\n' +
+      '4. Кому передаются данные\nДля работы Сервиса мы используем сторонних поставщиков инфраструктуры \u2014 Supabase (база данных, аутентификация, хранение файлов) и Netlify (хостинг). Эти поставщики могут обрабатывать данные на своих серверах в соответствии с собственными политиками конфиденциальности. Мы не продаём и не передаём ваши данные третьим лицам в маркетинговых целях.\n\n' +
+      '5. Срок хранения\nДанные хранятся, пока ваш аккаунт активен. При удалении аккаунта данные удаляются из основной базы данных; резервные копии, если они создаются поставщиками инфраструктуры, удаляются в течение разумного срока согласно их политикам.\n\n' +
+      '6. Ваши права\nВы имеете право: запросить доступ к своим данным; исправить неточные данные (через настройки профиля); удалить свой аккаунт и связанные с ним данные; отозвать согласие на обработку. Для реализации этих прав напишите нам по адресу, указанному в разделе «Контакты».\n\n' +
+      '7. Файлы cookie и локальное хранилище\nСервис использует локальное хранилище браузера для хранения токена авторизации, чтобы вы оставались в системе между посещениями. Мы не используем сторонние рекламные или трекинговые cookie.\n\n' +
+      '8. Изменения политики\nМы можем время от времени обновлять эту Политику. Дата последнего обновления указана в начале документа. О существенных изменениях мы сообщим пользователям через Сервис.\n\n' +
+      '9. Контакты\nПо всем вопросам, связанным с обработкой персональных данных, обращайтесь: [укажите контактный email].',
+  },
+  privacyPolicyClose: { en: 'Close', ru: 'Закрыть' },
   onboardingTitle: { en: 'Welcome! One last step', ru: 'Добро пожаловать! Последний шаг' },
   onboardingBody: {
     en: 'Pick a nickname and avatar for the community. You can change these later.',

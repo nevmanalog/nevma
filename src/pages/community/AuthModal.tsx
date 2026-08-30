@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT, type TKey } from '@/i18n'
 import { useAuth } from '@/state/auth'
+import { PrivacyPolicyModal } from './PrivacyPolicyModal'
 
 /** Rendered once, globally, near the top of the app (see App.tsx) — not
  *  inside AuthWidget — because it can be triggered from any page (e.g. the
@@ -19,10 +20,14 @@ export function AuthModal() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [checkEmail, setCheckEmail] = useState(false)
+  // Only required/shown for sign-up — signing back in doesn't ask for fresh
+  // consent, since it was already given the one time the account was created.
+  const [agreed, setAgreed] = useState(false)
+  const [policyOpen, setPolicyOpen] = useState(false)
 
   if (!open) return null
 
-  const reset = () => { setEmail(''); setPassword(''); setError(null); setCheckEmail(false); setBusy(false) }
+  const reset = () => { setEmail(''); setPassword(''); setError(null); setCheckEmail(false); setBusy(false); setAgreed(false) }
   const switchMode = (m: 'signin' | 'signup') => { setMode(m); setError(null); setCheckEmail(false) }
   const handleClose = () => { close(); reset() }
 
@@ -30,6 +35,7 @@ export function AuthModal() {
     const trimmedEmail = email.trim()
     if (!trimmedEmail || !password) { setError(t('authFillBothFields')); return }
     if (mode === 'signup' && password.length < 6) { setError(t('authPasswordTooShort')); return }
+    if (mode === 'signup' && !agreed) { setError(t('authMustAgree')); return }
 
     setBusy(true)
     setError(null)
@@ -102,15 +108,34 @@ export function AuthModal() {
 
             {error && <p className="onboarding-error">{error}</p>}
 
+            {mode === 'signup' && (
+              <label className="auth-consent">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                />
+                <span>
+                  {t('authAgreePrefix')}
+                  <button type="button" className="auth-consent-link" onClick={() => setPolicyOpen(true)}>
+                    {t('authAgreePolicyLink')}
+                  </button>
+                  {t('authAgreeSuffix')}
+                </span>
+              </label>
+            )}
+
             <div className="onboarding-actions">
               <button className="onboarding-cancel" disabled={busy} onClick={handleClose}>{t('cancel')}</button>
-              <button className="onboarding-submit" disabled={busy} onClick={submit}>
+              <button className="onboarding-submit" disabled={busy || (mode === 'signup' && !agreed)} onClick={submit}>
                 {busy ? t('saving') : mode === 'signin' ? t('authTabSignIn') : t('authTabSignUp')}
               </button>
             </div>
           </>
         )}
       </div>
+
+      {policyOpen && <PrivacyPolicyModal onClose={() => setPolicyOpen(false)} />}
     </div>
   )
 }
