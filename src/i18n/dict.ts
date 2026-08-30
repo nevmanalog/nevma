@@ -721,7 +721,7 @@ export const DICT = {
       '6. Your rights\nYou have the right to: request access to your data; correct inaccurate data (via your profile settings); delete your account and the data associated with it; withdraw your consent to processing. To exercise these rights, contact us using the details in the "Contact" section below.\n\n' +
       '7. Cookies and local storage\nThe Service uses your browser\u2019s local storage to keep your authentication token so you stay signed in between visits. We do not use third-party advertising or tracking cookies.\n\n' +
       '8. Changes to this Policy\nWe may update this Policy from time to time. The date at the top of this document shows when it was last updated. We will let users know of any material changes through the Service.\n\n' +
-      '9. Contact\nFor any questions about how we process personal data, contact us at: [add your contact email here].',
+      '9. Contact\nFor any questions about how we process personal data, contact us at: nevma.sup@gmail.com.',
     ru:
       'Настоящая Политика конфиденциальности («Политика») описывает, какие данные собирает и обрабатывает сервис Nevma («Сервис», «мы») при регистрации и использовании сайта, а также права пользователей в отношении этих данных.\n\n' +
       '1. Какие данные мы собираем\nПри регистрации мы собираем адрес электронной почты и пароль (пароль хранится в зашифрованном виде и никогда не доступен нам в открытом виде). После регистрации вы можете указать отображаемое имя (никнейм) и загрузить аватар \u2014 эти данные видны другим пользователям. При использовании функций сообщества мы также храним созданные вами публикации, комментарии, лайки, подписки и связанные с ними уведомления. Технические данные (например, IP-адрес, данные браузера) могут автоматически обрабатываться нашими поставщиками хостинга и инфраструктуры в рамках их стандартных логов.\n\n' +
@@ -732,7 +732,7 @@ export const DICT = {
       '6. Ваши права\nВы имеете право: запросить доступ к своим данным; исправить неточные данные (через настройки профиля); удалить свой аккаунт и связанные с ним данные; отозвать согласие на обработку. Для реализации этих прав напишите нам по адресу, указанному в разделе «Контакты».\n\n' +
       '7. Файлы cookie и локальное хранилище\nСервис использует локальное хранилище браузера для хранения токена авторизации, чтобы вы оставались в системе между посещениями. Мы не используем сторонние рекламные или трекинговые cookie.\n\n' +
       '8. Изменения политики\nМы можем время от времени обновлять эту Политику. Дата последнего обновления указана в начале документа. О существенных изменениях мы сообщим пользователям через Сервис.\n\n' +
-      '9. Контакты\nПо всем вопросам, связанным с обработкой персональных данных, обращайтесь: [укажите контактный email].',
+      '9. Контакты\nПо всем вопросам, связанным с обработкой персональных данных, обращайтесь: nevma.sup@gmail.com.',
   },
   privacyPolicyClose: { en: 'Close', ru: 'Закрыть' },
   onboardingTitle: { en: 'Welcome! One last step', ru: 'Добро пожаловать! Последний шаг' },
