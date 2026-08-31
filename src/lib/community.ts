@@ -8,6 +8,7 @@ export interface CommunityProfile {
   displayName: string
   avatarUrl: string | null
   createdAt: string
+  role: 'user' | 'admin'
 }
 
 /** What's needed to reproduce a work's exact "processing" (paper/printer/
@@ -24,6 +25,7 @@ export interface CommunityPost {
   authorId: string
   authorName: string
   authorAvatarUrl: string | null
+  authorRole: 'user' | 'admin'
   title: string
   previewUrl: string | null
   createdAt: string
@@ -48,6 +50,7 @@ export interface CommunityComment {
   authorId: string
   authorName: string
   authorAvatarUrl: string | null
+  authorRole: 'user' | 'admin'
   body: string
   createdAt: string
   likeCount: number
@@ -60,10 +63,14 @@ interface ProfileRow {
   display_name: string
   avatar_url: string | null
   created_at: string
+  role?: 'user' | 'admin'
 }
 
 function mapProfile(row: ProfileRow): CommunityProfile {
-  return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url, createdAt: row.created_at }
+  return {
+    id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url, createdAt: row.created_at,
+    role: row.role ?? 'user',
+  }
 }
 
 export async function fetchProfile(id: string): Promise<CommunityProfile | null> {
@@ -119,7 +126,7 @@ export async function unfollow(followerId: string, targetId: string): Promise<vo
 // without it, a project with more than one FK between `posts`/`comments`
 // and `profiles` (e.g. one added by hand in the Supabase table editor on
 // top of this script) makes the embed ambiguous and the whole query fails.
-const POST_SELECT = 'id, title, image_url, preset_data, created_at, author_id, profiles!author_id ( display_name, avatar_url ), likes(count), comments(count)'
+const POST_SELECT = 'id, title, image_url, preset_data, created_at, author_id, profiles!author_id ( display_name, avatar_url, role ), likes(count), comments(count)'
 
 interface PostRow {
   id: string
@@ -128,7 +135,7 @@ interface PostRow {
   preset_data: PostPresetData | null
   created_at: string
   author_id: string
-  profiles: { display_name: string; avatar_url: string | null } | null
+  profiles: { display_name: string; avatar_url: string | null; role?: 'user' | 'admin' } | null
   likes?: { count: number }[]
   comments?: { count: number }[]
 }
@@ -139,6 +146,7 @@ function mapPost(row: PostRow): CommunityPost {
     authorId: row.author_id,
     authorName: row.profiles?.display_name ?? 'unknown',
     authorAvatarUrl: row.profiles?.avatar_url ?? null,
+    authorRole: row.profiles?.role ?? 'user',
     title: row.title,
     previewUrl: row.image_url,
     createdAt: row.created_at,
@@ -237,7 +245,7 @@ interface CommentRow {
   author_id: string
   body: string
   created_at: string
-  profiles: { display_name: string; avatar_url: string | null } | null
+  profiles: { display_name: string; avatar_url: string | null; role?: 'user' | 'admin' } | null
 }
 
 interface ReactionRow {
@@ -269,7 +277,7 @@ export async function fetchComments(postId: string, currentUserId?: string | nul
   if (!supabase) return []
   const { data, error } = await supabase
     .from('comments')
-    .select('id, post_id, parent_id, author_id, body, created_at, profiles!author_id ( display_name, avatar_url )')
+    .select('id, post_id, parent_id, author_id, body, created_at, profiles!author_id ( display_name, avatar_url, role )')
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
   if (error) console.error('[community] fetchComments failed:', error.message)
@@ -285,6 +293,7 @@ export async function fetchComments(postId: string, currentUserId?: string | nul
       authorId: row.author_id,
       authorName: row.profiles?.display_name ?? 'unknown',
       authorAvatarUrl: row.profiles?.avatar_url ?? null,
+      authorRole: row.profiles?.role ?? 'user',
       body: row.body,
       createdAt: row.created_at,
       likeCount: r.likeCount,
@@ -391,24 +400,44 @@ export async function createPost(
 }
 
 /**
- * Deletes a post. Scoped with `.eq('author_id', authorId)` in addition to
- * the RLS policy in supabase/schema.sql — belt and suspenders, and it means
- * a caller passing the wrong id just deletes nothing instead of relying
- * solely on the database to reject it.
+ * Deletes a post. For a regular user this is scoped with
+ * `.eq('author_id', authorId)` in addition to the RLS policy in
+ * supabase/schema.sql — belt and suspenders, and it means a caller passing
+ * the wrong id just deletes nothing instead of relying solely on the
+ * database to reject it. An admin (see supabase/admin_role_migration.sql)
+ * skips that client-side filter and deletes by id alone — the RLS
+ * `is_admin()` check on the server is still the real gate, this just
+ * avoids the client filtering out a row the caller is actually allowed to
+ * touch.
  */
-export async function deletePost(postId: string, authorId: string): Promise<void> {
+export async function deletePost(postId: string, authorId: string, isAdmin = false): Promise<void> {
   if (!supabase) return
-  const { error } = await supabase.from('posts').delete().eq('id', postId).eq('author_id', authorId)
+  const query = supabase.from('posts').delete().eq('id', postId)
+  const { error } = await (isAdmin ? query : query.eq('author_id', authorId))
   if (error) throw error
 }
 
 /**
  * Renames a post's caption. Requires the "users can update their own posts"
  * policy on public.posts (see supabase/schema.sql) — re-run that script if
- * this fails with a permissions error on an older database.
+ * this fails with a permissions error on an older database. `isAdmin` works
+ * the same way as in deletePost above.
  */
-export async function updatePostTitle(postId: string, authorId: string, title: string): Promise<void> {
+export async function updatePostTitle(postId: string, authorId: string, title: string, isAdmin = false): Promise<void> {
   if (!supabase) return
-  const { error } = await supabase.from('posts').update({ title }).eq('id', postId).eq('author_id', authorId)
+  const query = supabase.from('posts').update({ title }).eq('id', postId)
+  const { error } = await (isAdmin ? query : query.eq('author_id', authorId))
+  if (error) throw error
+}
+
+/**
+ * Deletes a comment. Same own-row-or-admin shape as deletePost — mirrors
+ * the "users can delete their own comments" RLS policy, which now also
+ * allows public.is_admin() (see supabase/admin_role_migration.sql).
+ */
+export async function deleteComment(commentId: string, authorId: string, isAdmin = false): Promise<void> {
+  if (!supabase) return
+  const query = supabase.from('comments').delete().eq('id', commentId)
+  const { error } = await (isAdmin ? query : query.eq('author_id', authorId))
   if (error) throw error
 }

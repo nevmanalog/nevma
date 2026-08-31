@@ -1355,7 +1355,26 @@ input[type='range']::-moz-range-thumb {
 .profile-avatar { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .profile-avatar-fallback { display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 700; color: var(--text-dim); background: var(--xp-face-deep); }
 .profile-header-main { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-.profile-name { margin: 0; font-size: 18px; color: var(--text); }
+.profile-name { margin: 0; font-size: 18px; color: var(--text); display: inline-flex; align-items: center; gap: 8px; }
+
+/* Small pill next to a display name for role === 'admin' (see state/auth.ts,
+   lib/community.ts) — shown in the profile header, post header, caption,
+   and next to each comment author. */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(180deg, #6a8dff, #4a68e0);
+  border-radius: 4px;
+  padding: 2px 6px;
+  line-height: 1.4;
+  vertical-align: middle;
+  margin-left: 4px;
+}
 .profile-handle { margin: 0; font-size: 12px; color: var(--text-dim); }
 .profile-counts { display: flex; gap: 14px; font-size: 12.5px; color: var(--text-dim); margin-top: 4px; }
 .profile-counts b { color: var(--text); }
@@ -1440,6 +1459,8 @@ input[type='range']::-moz-range-thumb {
 .post-modal-caption-row b { font-weight: 700; }
 .post-modal-actions { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--xp-shadow-darker); flex-shrink: 0; }
 .post-modal-share { margin-left: auto; }
+.post-modal-delete { color: #c0264a; }
+.post-modal-delete:disabled { opacity: 0.5; cursor: default; }
 .post-modal-comments { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 12px; }
 
 .post-modal-comment-row { display: flex; gap: 8px; }

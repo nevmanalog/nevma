@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useT } from '@/i18n'
 import {
   fetchComments, addComment, setCommentReaction, fetchCommentReactionCounts, fetchMyCommentReaction,
+  deletePost, deleteComment,
   type CommunityPost, type CommunityComment,
 } from '@/lib/community'
 import { PostPresetChip } from './PostPresetChip'
@@ -12,6 +13,10 @@ interface Props {
   currentUserId: string | null
   currentUserName: string | null
   currentUserAvatarUrl: string | null
+  /** True when the signed-in user has the 'admin' role (see
+   *  supabase/admin_role_migration.sql) — lets them delete this post and
+   *  anyone's comment on it, not just their own. */
+  isAdmin: boolean
   onClose: () => void
   onToggleLike: () => void
   onRequireAuth: () => void
@@ -22,6 +27,16 @@ interface Props {
    *  bump this post's commentCount in the feed/profile list behind the
    *  modal — that count lives outside this component. */
   onCommentAdded: () => void
+  /** Called right after this post is deleted (by its author or an admin) —
+   *  the caller should remove it from whatever list it came from and close
+   *  this modal. */
+  onPostDeleted: () => void
+}
+
+function AuthorBadge({ role }: { role: 'user' | 'admin' }) {
+  const t = useT()
+  if (role !== 'admin') return null
+  return <span className="admin-badge" title={t('adminBadgeHint')}>{t('adminBadge')}</span>
 }
 
 function Avatar({ url, name, className }: { url: string | null; name: string; className: string }) {
@@ -34,8 +49,8 @@ function Avatar({ url, name, className }: { url: string | null; name: string; cl
  *  scrollable comment thread + composer on the other. Opened from a post
  *  tile on the feed or on a profile page. */
 export function PostModal({
-  post, liked, currentUserId, currentUserName, currentUserAvatarUrl,
-  onClose, onToggleLike, onRequireAuth, onOpenProfile, onCommentAdded,
+  post, liked, currentUserId, currentUserName, currentUserAvatarUrl, isAdmin,
+  onClose, onToggleLike, onRequireAuth, onOpenProfile, onCommentAdded, onPostDeleted,
 }: Props) {
   const t = useT()
   const [comments, setComments] = useState<CommunityComment[]>([])
@@ -45,6 +60,37 @@ export function PostModal({
   const [sendError, setSendError] = useState(false)
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [deletingPost, setDeletingPost] = useState(false)
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
+
+  const canDeletePost = Boolean(currentUserId && (currentUserId === post.authorId || isAdmin))
+
+  const handleDeletePost = async () => {
+    if (!currentUserId || deletingPost) return
+    if (!window.confirm(t('postDeleteConfirm'))) return
+    setDeletingPost(true)
+    try {
+      await deletePost(post.id, currentUserId, isAdmin)
+      onPostDeleted()
+    } catch (err) {
+      console.error('[community] deletePost failed:', err)
+      setDeletingPost(false)
+    }
+  }
+
+  const handleDeleteComment = async (comment: CommunityComment) => {
+    if (!currentUserId || deletingCommentId) return
+    if (!window.confirm(t('commentDeleteConfirm'))) return
+    setDeletingCommentId(comment.id)
+    try {
+      await deleteComment(comment.id, currentUserId, isAdmin)
+      setComments((cs) => cs.filter((c) => c.id !== comment.id && c.parentId !== comment.id))
+    } catch (err) {
+      console.error('[community] deleteComment failed:', err)
+    } finally {
+      setDeletingCommentId(null)
+    }
+  }
 
   // `/p/<id>` rather than the in-app `#/post/<id>` hash — a real path is
   // what lets link-preview bots and search engines see which post this is
@@ -99,6 +145,7 @@ export function PostModal({
         authorId: currentUserId,
         authorName: currentUserName ?? '',
         authorAvatarUrl: currentUserAvatarUrl,
+        authorRole: isAdmin ? 'admin' : 'user',
         body,
         createdAt: created.createdAt,
         likeCount: 0,
@@ -157,6 +204,7 @@ export function PostModal({
           <button type="button" className="post-modal-comment-author-btn" onClick={() => onOpenProfile(comment.authorId)}>
             @{comment.authorName}
           </button>
+          <AuthorBadge role={comment.authorRole} />
           {' '}{comment.body}
         </p>
         <div className="post-modal-comment-actions">
@@ -181,6 +229,16 @@ export function PostModal({
           >
             {t('commentReply')}
           </button>
+          {(currentUserId === comment.authorId || isAdmin) && (
+            <button
+              type="button"
+              className="post-modal-comment-action"
+              disabled={deletingCommentId === comment.id}
+              onClick={() => handleDeleteComment(comment)}
+            >
+              {t('commentDelete')}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -200,6 +258,7 @@ export function PostModal({
             <button type="button" className="post-modal-header-identity" onClick={() => onOpenProfile(post.authorId)}>
               <Avatar url={post.authorAvatarUrl} name={post.authorName} className="post-modal-header-avatar" />
               <span className="post-modal-header-name">@{post.authorName}</span>
+              <AuthorBadge role={post.authorRole} />
             </button>
             <button type="button" className="post-modal-close" onClick={onClose}>✕</button>
           </div>
@@ -220,6 +279,11 @@ export function PostModal({
             <button type="button" className="ig-action-btn post-modal-share" onClick={share}>
               {linkCopied ? `✓ ${t('postLinkCopied')}` : `🔗 ${t('postShare')}`}
             </button>
+            {canDeletePost && (
+              <button type="button" className="ig-action-btn post-modal-delete" disabled={deletingPost} onClick={handleDeletePost}>
+                🗑 {t(currentUserId === post.authorId ? 'postDelete' : 'postDeleteAsAdmin')}
+              </button>
+            )}
           </div>
 
           <div className="post-modal-comments">

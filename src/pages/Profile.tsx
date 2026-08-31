@@ -43,6 +43,7 @@ export function Profile() {
   const [tab, setTab] = useState<ProfileTab>('posts')
 
   const isOwnProfile = Boolean(currentUser && profileId && currentUser.id === profileId)
+  const isAdmin = currentProfile?.role === 'admin'
 
   useEffect(() => {
     if (!profileId) return
@@ -108,7 +109,7 @@ export function Profile() {
     if (!window.confirm(t('postDeleteConfirm'))) return
     setDeletingPostId(post.id)
     try {
-      await deletePost(post.id, currentUser.id)
+      await deletePost(post.id, currentUser.id, isAdmin)
       setPosts((p) => p.filter((x) => x.id !== post.id))
     } finally {
       setDeletingPostId(null)
@@ -160,7 +161,10 @@ export function Profile() {
                 : <div className="profile-avatar sunk-in profile-avatar-fallback">{profile.displayName[0]?.toUpperCase()}</div>}
 
               <div className="profile-header-main">
-                <h2 className="profile-name">{profile.displayName}</h2>
+                <h2 className="profile-name">
+                  {profile.displayName}
+                  {profile.role === 'admin' && <span className="admin-badge" title={t('adminBadgeHint')}>{t('adminBadge')}</span>}
+                </h2>
                 <p className="profile-handle">@{profile.displayName}</p>
 
                 <div className="profile-counts">
@@ -229,19 +233,21 @@ export function Profile() {
                       {post.previewUrl
                         ? <img className="profile-post-tile-img" crossOrigin="anonymous" src={post.previewUrl} alt="" />
                         : '🖼'}
-                      {isOwnProfile && (
+                      {(isOwnProfile || isAdmin) && (
                         <div className="profile-post-tile-actions" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="profile-post-tile-action"
-                            title={t('postEditTitle')}
-                            onClick={() => setEditingPost(post)}
-                          >✎</button>
+                          {isOwnProfile && (
+                            <button
+                              type="button"
+                              className="profile-post-tile-action"
+                              title={t('postEditTitle')}
+                              onClick={() => setEditingPost(post)}
+                            >✎</button>
+                          )}
                           <button
                             type="button"
                             className="profile-post-tile-action"
                             disabled={deletingPostId === post.id}
-                            title={t('postDelete')}
+                            title={isOwnProfile ? t('postDelete') : t('postDeleteAsAdmin')}
                             onClick={() => handleDeletePost(post)}
                           >✕</button>
                         </div>
@@ -285,11 +291,17 @@ export function Profile() {
           currentUserId={currentUser?.id ?? null}
           currentUserName={currentProfile?.displayName ?? null}
           currentUserAvatarUrl={currentProfile?.avatarUrl ?? null}
+          isAdmin={isAdmin}
           onClose={() => setOpenPostId(null)}
           onToggleLike={() => toggleLike(openPost)}
           onRequireAuth={openAuthModal}
           onOpenProfile={(userId) => { setOpenPostId(null); openProfile(userId) }}
           onCommentAdded={() => handleCommentAdded(openPost.id)}
+          onPostDeleted={() => {
+            setPosts((p) => p.filter((x) => x.id !== openPost.id))
+            setOpenPostId(null)
+            showToast(t('toastPostDeleted'))
+          }}
         />
       )}
     </div>

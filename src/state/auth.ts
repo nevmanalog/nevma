@@ -12,6 +12,10 @@ export interface Profile {
   displayName: string
   avatarUrl: string | null
   createdAt: string
+  /** 'admin' can delete/edit anyone's post or comment (see
+   *  supabase/admin_role_migration.sql) and gets a badge next to their name
+   *  wherever it's shown — everyone else is 'user'. */
+  role: 'user' | 'admin'
 }
 
 interface AuthState {
@@ -98,7 +102,10 @@ export const useAuth = create<AuthState>((set, get) => ({
       .single()
     if (error) throw error
     set({
-      profile: { id: data.id, displayName: data.display_name, avatarUrl: data.avatar_url, createdAt: data.created_at },
+      profile: {
+        id: data.id, displayName: data.display_name, avatarUrl: data.avatar_url, createdAt: data.created_at,
+        role: (data.role as 'user' | 'admin' | undefined) ?? 'user',
+      },
       needsOnboarding: false,
     })
   },
@@ -128,7 +135,10 @@ export const useAuth = create<AuthState>((set, get) => ({
       if (data) {
         set({
           session, user: session.user, loading: false, needsOnboarding: false, authModalOpen: false,
-          profile: { id: data.id, displayName: data.display_name, avatarUrl: data.avatar_url, createdAt: data.created_at },
+          profile: {
+            id: data.id, displayName: data.display_name, avatarUrl: data.avatar_url, createdAt: data.created_at,
+            role: (data.role as 'user' | 'admin' | undefined) ?? 'user',
+          },
         })
       } else {
         // First login ever for this account — no profiles row yet.

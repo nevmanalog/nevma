@@ -825,7 +825,11 @@ export const DICT = {
   profileTabLiked: { en: 'Liked', ru: 'Понравившееся' },
   postEditTitle: { en: 'Edit post', ru: 'Редактировать пост' },
   postDelete: { en: 'Delete post', ru: 'Удалить пост' },
+  postDeleteAsAdmin: { en: 'Delete post (admin)', ru: 'Удалить пост (админ)' },
   postDeleteConfirm: { en: 'Delete this post? This cannot be undone.', ru: 'Удалить этот пост? Это действие нельзя отменить.' },
+  adminBadge: { en: 'Dev', ru: 'Разработчик' },
+  adminBadgeHint: { en: 'Site admin / developer', ru: 'Администратор / разработчик сайта' },
+  toastPostDeleted: { en: 'Post deleted.', ru: 'Пост удалён.' },
 
   // publish modal
   communityNoPostsYet: {
@@ -849,6 +853,8 @@ export const DICT = {
   postShare: { en: 'Share', ru: 'Поделиться' },
   postLinkCopied: { en: 'Link copied', ru: 'Ссылка скопирована' },
   commentReplyingTo: { en: 'Replying to', ru: 'Ответ для' },
+  commentDelete: { en: 'Delete', ru: 'Удалить' },
+  commentDeleteConfirm: { en: 'Delete this comment? This cannot be undone.', ru: 'Удалить этот комментарий? Это действие нельзя отменить.' },
 } as const
 
 export type TKey = keyof typeof DICT

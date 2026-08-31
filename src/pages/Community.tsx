@@ -264,11 +264,22 @@ export function Community() {
           currentUserId={user?.id ?? null}
           currentUserName={currentProfile?.displayName ?? null}
           currentUserAvatarUrl={currentProfile?.avatarUrl ?? null}
+          isAdmin={currentProfile?.role === 'admin'}
           onClose={closePostRoute}
           onToggleLike={() => toggleLike(openPost)}
           onRequireAuth={openAuthModal}
           onOpenProfile={(userId) => openProfile(userId)}
           onCommentAdded={() => handleCommentAdded(openPost.id)}
+          onPostDeleted={() => {
+            setPosts((ps) => ps.filter((p) => p.id !== openPost.id))
+            setDeepLinkedPosts((d) => {
+              const next = { ...d }
+              delete next[openPost.id]
+              return next
+            })
+            closePostRoute()
+            showToast(t('toastPostDeleted'))
+          }}
         />
       )}
     </div>
