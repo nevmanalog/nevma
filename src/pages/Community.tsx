@@ -33,6 +33,7 @@ type SortMode = 'popular' | 'recent'
 export function Community() {
   const t = useT()
   const navigate = useRoute((s) => s.navigate)
+  const closeWindow = useRoute((s) => s.closeWindow)
   const openProfile = useRoute((s) => s.openProfile)
   const openPostRoute = useRoute((s) => s.openPost)
   const closePostRoute = useRoute((s) => s.closePost)
@@ -151,7 +152,7 @@ export function Community() {
       <WinTitleBar />
 
       <div className="community-topbar">
-        <button className="community-back" onClick={() => navigate('landing')}>← {t('back')}</button>
+        <button className="community-back" onClick={() => closeWindow('community')}>← {t('back')}</button>
         <h1 className="community-title">{t('communityTitle')}</h1>
         <div className="community-topbar-actions">
           <button className="community-open-editor" onClick={() => navigate('editor')}>✂ {t('openEditor')}</button>

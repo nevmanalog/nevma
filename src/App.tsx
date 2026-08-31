@@ -1,9 +1,7 @@
 import { useEffect } from 'react'
 import { useRoute } from '@/state/route'
 import { useAuth } from '@/state/auth'
-import { Community } from '@/pages/Community'
 import { Editor } from '@/pages/Editor'
-import { Profile } from '@/pages/Profile'
 import { AuthModal } from '@/pages/community/AuthModal'
 import { ToastHost } from '@/app/panels/ToastHost'
 import { BootScreen } from '@/app/panels/BootScreen'
@@ -15,17 +13,14 @@ export default function App() {
 
   useEffect(() => initAuth(), [initAuth])
 
-  // 'landing' shows no floating window at all — just the desktop wallpaper
-  // with the logo and the icons, which is how you get anywhere from here.
-  let page: JSX.Element | null = null
-  if (route === 'community') page = <Community />
-  else if (route === 'editor') page = <Editor />
-  else if (route === 'profile') page = <Profile />
-
+  // The Editor is the one full-bleed page, not wrapped in the Desktop.
+  // Everything else (including "no page open yet") is the Desktop, which
+  // now owns rendering Community/Profile as its own floating windows —
+  // possibly more than one at once — instead of being handed a single page.
   return (
     <>
       <BootScreen />
-      {route === 'editor' ? page : <Desktop>{page}</Desktop>}
+      {route === 'editor' ? <Editor /> : <Desktop />}
       <AuthModal />
       <ToastHost />
     </>

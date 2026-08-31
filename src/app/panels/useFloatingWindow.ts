@@ -21,14 +21,24 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Makes a floating "fake OS" window draggable (by its title bar) and
- * resizable (by its edges/corners) within a bounding container, and gives
- * back a reset so callers can snap it back to a centered default. Purely a
- * geometry/event hook — rendering the drag handle and resize edges is left
- * to the caller.
+ * Makes a floating "fake OS" window draggable (by its title bar), resizable
+ * (by its edges/corners), and maximizable (fills the container edge to
+ * edge, restoring to its previous spot when un-maximized again) within a
+ * bounding container. Purely a geometry/event hook — rendering the drag
+ * handle, resize edges, and the maximize button itself is left to the
+ * caller.
+ *
+ * `geometry` stays `null` until the window is first dragged or resized:
+ * while it's null the caller is expected to position the window with CSS
+ * (centered, optionally offset by `cascadeOffset` so that several windows
+ * open at once cascade instead of landing exactly on top of one another)
+ * rather than with inline pixel coordinates — this is also what keeps the
+ * mobile layout (where the window is meant to just fill the screen)
+ * working without this hook needing to know about that breakpoint.
  */
-export function useFloatingWindow(containerRef: RefObject<HTMLElement | null>) {
+export function useFloatingWindow(containerRef: RefObject<HTMLElement | null>, cascadeOffset = 0) {
   const [geometry, setGeometry] = useState<Geometry | null>(null)
+  const [maximized, setMaximized] = useState(false)
   const dragRef = useRef<{ startX: number; startY: number; origLeft: number; origTop: number } | null>(null)
   const resizeRef = useRef<{ dir: ResizeDir; startX: number; startY: number; orig: Geometry } | null>(null)
 
@@ -41,10 +51,10 @@ export function useFloatingWindow(containerRef: RefObject<HTMLElement | null>) {
     const { width: cw, height: ch } = containerSize()
     const width = Math.min(DEFAULT_WIDTH, cw * DEFAULT_WIDTH_RATIO)
     const height = Math.min(DEFAULT_HEIGHT, ch * DEFAULT_HEIGHT_RATIO)
-    return { left: (cw - width) / 2, top: (ch - height) / 2, width, height }
-  }, [containerSize])
-
-  const reset = useCallback(() => setGeometry(null), [])
+    const left = clamp((cw - width) / 2 + cascadeOffset, 0, Math.max(0, cw - width))
+    const top = clamp((ch - height) / 2 + cascadeOffset, 0, Math.max(0, ch - height))
+    return { left, top, width, height }
+  }, [containerSize, cascadeOffset])
 
   const ensure = useCallback((): Geometry => {
     let g = geometry
@@ -54,6 +64,12 @@ export function useFloatingWindow(containerRef: RefObject<HTMLElement | null>) {
     }
     return g
   }, [geometry, defaultGeometry])
+
+  // Maximize ----------------------------------------------------------------
+
+  const toggleMaximize = useCallback(() => {
+    setMaximized((m) => !m)
+  }, [])
 
   // Drag ------------------------------------------------------------------
 
@@ -76,13 +92,13 @@ export function useFloatingWindow(containerRef: RefObject<HTMLElement | null>) {
   }, [onDragMove])
 
   const startDrag = useCallback((e: ReactMouseEvent) => {
-    if (e.button !== 0) return
+    if (e.button !== 0 || maximized) return
     e.preventDefault()
     const g = ensure()
     dragRef.current = { startX: e.clientX, startY: e.clientY, origLeft: g.left, origTop: g.top }
     window.addEventListener('mousemove', onDragMove)
     window.addEventListener('mouseup', onDragEnd)
-  }, [ensure, onDragMove, onDragEnd])
+  }, [ensure, onDragMove, onDragEnd, maximized])
 
   // Resize ------------------------------------------------------------------
 
@@ -112,14 +128,14 @@ export function useFloatingWindow(containerRef: RefObject<HTMLElement | null>) {
   }, [onResizeMove])
 
   const startResize = useCallback((dir: ResizeDir) => (e: ReactMouseEvent) => {
-    if (e.button !== 0) return
+    if (e.button !== 0 || maximized) return
     e.preventDefault()
     e.stopPropagation()
     const g = ensure()
     resizeRef.current = { dir, startX: e.clientX, startY: e.clientY, orig: g }
     window.addEventListener('mousemove', onResizeMove)
     window.addEventListener('mouseup', onResizeEnd)
-  }, [ensure, onResizeMove, onResizeEnd])
+  }, [ensure, onResizeMove, onResizeEnd, maximized])
 
   // Cleanup any listeners left dangling if the window unmounts mid-drag.
   useEffect(() => () => {
@@ -129,5 +145,5 @@ export function useFloatingWindow(containerRef: RefObject<HTMLElement | null>) {
     window.removeEventListener('mouseup', onResizeEnd)
   }, [onDragMove, onDragEnd, onResizeMove, onResizeEnd])
 
-  return { geometry, reset, startDrag, startResize }
+  return { geometry, maximized, toggleMaximize, startDrag, startResize }
 }

@@ -947,9 +947,10 @@ input[type='range']::-moz-range-thumb {
 
 
 /* ===================== Desktop shell ===================== */
-/* Landing/Community/Profile now float as one centered window on this
- * wallpaper instead of filling the screen edge to edge. The Editor is
- * deliberately not wrapped in this — it stays its own full-bleed page. */
+/* Community/Profile float as windows on this wallpaper instead of filling
+ * the screen edge to edge, and more than one can be open (and visible) at
+ * once — see Desktop.tsx. The Editor is deliberately not wrapped in this —
+ * it stays its own full-bleed page. */
 .desktop {
   height: 100%; width: 100%; position: relative; overflow: hidden;
   background: var(--xp-desktop);
@@ -978,9 +979,26 @@ input[type='range']::-moz-range-thumb {
   background: var(--xp-select); outline: 1px dotted #ffffff; outline-offset: 1px;
 }
 .desktop-window {
-  position: relative;
+  /* Positioned relative to `.desktop` and centered by default via
+   * top/left/transform (rather than the parent's flexbox) so that several
+   * of these can coexist and be individually offset/dragged/maximized —
+   * Desktop.tsx overrides `left`/`top`/`width`/`height` inline with real
+   * pixel values once a window has been dragged or resized, and overrides
+   * just `transform` (to stagger each window's default position) while it
+   * hasn't been. */
+  position: absolute; top: 50%; left: 50%;
   width: min(960px, 96vw); height: min(680px, 92vh);
+  transform: translate(-50%, -50%);
   box-shadow: 6px 6px 0 rgba(0,0,0,0.35);
+}
+/* The □ button: fills the whole desktop, edge to edge. `!important` here
+ * because it needs to win over whatever inline left/top/width/height/
+ * transform Desktop.tsx last set for the un-maximized geometry. */
+.desktop-window-max {
+  left: 0 !important; top: 0 !important; right: 0; bottom: 0;
+  width: 100% !important; height: 100% !important;
+  transform: none !important;
+  box-shadow: none;
 }
 /* The page's own WinTitleBar becomes the drag handle for the whole
  * floating window (see Desktop.tsx's mousedown delegation) — but its own
@@ -988,7 +1006,8 @@ input[type='range']::-moz-range-thumb {
 .desktop-window .win-titlebar { cursor: move; }
 .desktop-window .win-titlebar-btns,
 .desktop-window .win-titlebar-lang { cursor: default; }
-.desktop-window .win-close { cursor: pointer; }
+.desktop-window .win-close,
+.desktop-window .win-max { cursor: pointer; }
 
 .win-resize {
   position: absolute; z-index: 3;
@@ -1013,7 +1032,13 @@ input[type='range']::-moz-range-thumb {
 }
 @media (max-width: 640px) {
   .desktop { padding: 0; }
-  .desktop-window { width: 100vw; height: 100%; box-shadow: none; }
+  .desktop-window {
+    width: 100vw; height: 100%; box-shadow: none;
+    /* Ignore Desktop.tsx's per-window cascade offset at this width — with
+     * only one window ever really visible on a phone-sized screen, a
+     * second window should still land full-bleed, not nudged aside. */
+    transform: translate(-50%, -50%) !important;
+  }
   .desktop-wallpaper-logo { width: 50vw; }
   /* Dragging/resizing a phone-width window isn't useful — it already
    * fills the screen — so the handles and move cursor are dropped. */
