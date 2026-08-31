@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 
-const STORAGE_KEY = 'nevma-boot-seen-date'
 const TOTAL_BLOCKS = 20
 const BLOCK_INTERVAL_MS = 90
 const HOLD_MS = 260
@@ -14,31 +13,11 @@ const STATUSES = [
   'Точим ножницы...',
 ]
 
-function shouldShowToday(): boolean {
-  try {
-    const today = new Date().toISOString().slice(0, 10)
-    return localStorage.getItem(STORAGE_KEY) !== today
-  } catch {
-    // Storage unavailable (private mode, disabled cookies, etc.) — don't
-    // block the app on it, just skip the boot screen entirely.
-    return false
-  }
-}
-
-function markShownToday() {
-  try {
-    localStorage.setItem(STORAGE_KEY, new Date().toISOString().slice(0, 10))
-  } catch {
-    // Nothing to do — it'll just show again next load, which is fine.
-  }
-}
-
 /**
- * A one-shot, Windows-98-style "boot" screen shown once per day on first
- * load. Purely decorative brand moment — picks one random status line and
- * holds it for the whole animation (rather than cycling), so it's short,
- * doesn't get old, and gives people a small reason to check back tomorrow.
- * Skips itself entirely under prefers-reduced-motion.
+ * A Windows-98-style "boot" screen shown on every load, right at the
+ * start. Purely decorative brand moment — picks one random status line and
+ * holds it for the whole animation (rather than cycling), so it's short
+ * and doesn't get old. Skips itself entirely under prefers-reduced-motion.
  */
 export function BootScreen() {
   const [visible, setVisible] = useState(false)
@@ -49,9 +28,8 @@ export function BootScreen() {
 
   useEffect(() => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduceMotion || !shouldShowToday()) return
+    if (reduceMotion) return
     setVisible(true)
-    markShownToday()
   }, [])
 
   useEffect(() => {

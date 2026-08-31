@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useRoute } from '@/state/route'
 import { useAuth } from '@/state/auth'
-import { Landing } from '@/pages/Landing'
 import { Community } from '@/pages/Community'
 import { Editor } from '@/pages/Editor'
 import { Profile } from '@/pages/Profile'
@@ -16,7 +15,9 @@ export default function App() {
 
   useEffect(() => initAuth(), [initAuth])
 
-  let page = <Landing />
+  // 'landing' shows no floating window at all — just the desktop wallpaper
+  // with the logo and the icons, which is how you get anywhere from here.
+  let page: JSX.Element | null = null
   if (route === 'community') page = <Community />
   else if (route === 'editor') page = <Editor />
   else if (route === 'profile') page = <Profile />

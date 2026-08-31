@@ -981,10 +981,16 @@ input[type='range']::-moz-range-thumb {
   width: min(960px, 96vw); height: min(680px, 92vh);
   box-shadow: 6px 6px 0 rgba(0,0,0,0.35);
 }
+.desktop-wallpaper-logo {
+  width: min(360px, 60vw);
+  filter: drop-shadow(0 4px 18px rgba(0,0,0,0.45));
+  pointer-events: none;
+  user-select: none;
+}
 @media (max-width: 640px) {
   .desktop { padding: 0; }
-  .desktop-icons { display: none; }
   .desktop-window { width: 100vw; height: 100%; box-shadow: none; }
+  .desktop-wallpaper-logo { width: 50vw; }
 }
 
 /* ===================== Landing / Community windows ===================== */
