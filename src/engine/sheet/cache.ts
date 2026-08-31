@@ -107,6 +107,17 @@ interface LayerCache {
   // from one falls back to the old full-replay behavior" for bounded memory
   // (~1 extra baseline's worth per layer) instead of unbounded growth.
   checkpoint: { opsPrefix: SheetOp[]; state: Fields } | null
+  // Live-preview support (see beginStrokePreview/applyStrokePreviewDelta/
+  // endStrokePreview below): a snapshot of `work` taken the moment a stroke
+  // starts, so preview deltas can be applied directly and cheaply to the
+  // live state during the drag, then discarded by restoring from here the
+  // instant the real, final op is about to be committed. Allocated once and
+  // reused across strokes (like `checkpoint`) rather than per-stroke, so
+  // drawing a lot doesn't create GC pressure. `previewActive` — not merely
+  // "is the buffer allocated" — tracks whether a preview is currently live,
+  // since the buffer itself stays allocated for reuse after the first stroke.
+  previewSnapshot: Fields | null
+  previewActive: boolean
 }
 
 const caches = new Map<string, LayerCache>()
@@ -297,6 +308,7 @@ function createCacheEntry(
     printSig: '', agingSig: '', finalSig: '', src,
     printed: out, srcBytes, baseline: snapshot(work), work, applied: [],
     out, ctx, composited, img, referenceVersion: 0, parallel, checkpoint: null,
+    previewSnapshot: null, previewActive: false,
   }
 }
 
@@ -520,4 +532,77 @@ export function dropLayerCache(id: string): void {
 
 export function getCachedMaterialState(id: string): SheetState | null {
   return caches.get(id)?.work ?? null
+}
+
+// ===================== Live stroke preview =====================
+//
+// Everything above computes the ONE true, deterministic result of a
+// committed op list — that's what makes undo/redo/replay reliable. A live
+// preview needs the opposite trade-off: many cheap, approximate updates per
+// second while the person is still dragging, thrown away the instant the
+// real op is committed. Rather than build a second parallel pipeline, these
+// three functions borrow the existing cache entry's live `work` state
+// directly:
+//
+//   beginStrokePreview   — snapshot `work` (the current committed truth).
+//   applyStrokePreviewDelta — mutate `work` in place with a tiny delta op
+//                             (just the newest segment of the in-progress
+//                             stroke) and repaint its small dirty region.
+//   endStrokePreview     — restore `work` from the snapshot, erasing every
+//                          preview delta, right before the real, final,
+//                          whole-stroke op is committed through the normal
+//                          path above.
+//
+// Because `work`/`applied` are never left mutated by a preview once
+// endStrokePreview has run, the follow-up real commit still hits the cheap
+// "pure append" fast path exactly as if no preview had happened — the
+// person just gets to see the material react while they're still drawing,
+// instead of only once they lift the pointer.
+//
+// Deliberately scoped out of this v1: group-mode strokes (many layers at
+// once) and the water/burn/glue "contact" bleed into a neighbouring layer.
+// Both still only resolve on commit, same as before — previewing those
+// too would mean touching several layers' caches per frame, which is a
+// bigger change than this warrants right now.
+
+/** Start a live-preview session for a layer. Returns false (nothing to do)
+ * if the layer has no cache entry yet — callers should just skip preview
+ * for that stroke rather than force a bake. */
+export function beginStrokePreview(id: string): boolean {
+  const c = caches.get(id)
+  if (!c) return false
+  if (!c.previewSnapshot) c.previewSnapshot = snapshot(c.work)
+  else snapshotInto(c.previewSnapshot, c.work)
+  c.previewActive = true
+  return true
+}
+
+/** Apply one small delta segment of an in-progress stroke directly onto the
+ * live working state and repaint just its dirty region. No-ops (returns
+ * false) if beginStrokePreview wasn't called first. */
+export function applyStrokePreviewDelta(
+  id: string, op: SheetOp, effects: LayerEffects, seed: number,
+): boolean {
+  const c = caches.get(id)
+  if (!c || !c.previewActive) return false
+  const bb = applyToolOperation(c.work, op)
+  if (!bb) return false
+  const w = c.out.width, h = c.out.height
+  const rx0 = Math.max(0, bb.x0 - 1), ry0 = Math.max(0, bb.y0 - 1)
+  const rx1 = Math.min(w - 1, bb.x1 + 1), ry1 = Math.min(h - 1, bb.y1 + 1)
+  paintRegion(c, w, h, effects, seed, rx0, ry0, rx1, ry1)
+  return true
+}
+
+/** End a live-preview session, discarding every preview delta by restoring
+ * `work` to exactly what it was when the preview began. Always call this
+ * before committing the real op (the normal commit path repaints the
+ * (now single-op) dirty region correctly on its own — this only needs to
+ * undo the preview's material changes, not repaint anything itself). Safe
+ * to call even if no preview is active. */
+export function endStrokePreview(id: string): void {
+  const c = caches.get(id)
+  if (!c || !c.previewActive) return
+  restore(c.work, c.previewSnapshot!)
+  c.previewActive = false
 }

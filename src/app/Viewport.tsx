@@ -4,7 +4,7 @@ import Konva from 'konva'
 import { useStore, sourceBitmaps, originalBitmaps, sheetOps } from '@/state/store'
 import { useUi } from '@/state/ui'
 import { bakeBase } from '@/engine/gl/bakeAsync'
-import { renderLayerCached, dropLayerCache, getCachedMaterialState } from '@/engine/sheet/cache'
+import { renderLayerCached, dropLayerCache, getCachedMaterialState, beginStrokePreview, applyStrokePreviewDelta, endStrokePreview } from '@/engine/sheet/cache'
 import { cutSelection } from '@/engine/cut'
 import { LassoTool } from './tools/LassoTool'
 import { PenTool } from './tools/PenTool'
@@ -19,6 +19,13 @@ import { loadImageFile } from '@/shared/loadImage'
 // Screen-space snap distance (px) — converted to document units per layer by
 // dividing by the current zoom, so snapping feels consistent at any zoom.
 const SNAP_PX = 8
+
+// Per-layer "force a redraw" callbacks, registered by each LayerNode while
+// mounted (like sheetOps, this lives outside React state on purpose). Live
+// preview strokes mutate a layer's cached canvas directly, bypassing
+// bakeToken entirely, so they need a way to ask Konva to repaint the pixels
+// without triggering the full renderLayerCached pipeline on every frame.
+const layerRedrawRegistry = new Map<string, () => void>()
 
 function LayerNode({ id }: { id: string }) {
   const layer = useStore((s) => s.layers[id])
@@ -69,6 +76,13 @@ function LayerNode({ id }: { id: string }) {
 
   // Free the layer's cached buffers when the node unmounts.
   useEffect(() => () => dropLayerCache(id), [id])
+
+  // Let live-preview strokes (see Viewport's handlePreviewDelta) force a
+  // repaint of just this layer after mutating its cached canvas directly.
+  useEffect(() => {
+    layerRedrawRegistry.set(id, () => imgRef.current?.getLayer()?.batchDraw())
+    return () => { layerRedrawRegistry.delete(id) }
+  }, [id])
 
   const locked = !!layer?.locked
   const selectable = activeTool === 'select'
@@ -393,8 +407,55 @@ export function Viewport() {
     commitCut(activeId, donor, fragment.canvas, `${t('fragment')} (${edgeStyle})`, worldPos.x, worldPos.y, edgeStyle, mask, crop)
   }
 
+  // Live preview: mutate the active layer's cache directly as the stroke
+  // grows, so the material reacts while drawing instead of only on release.
+  // Scoped to the plain single-layer case only — group mode and the
+  // water/burn/glue contact bleed into a neighbouring layer stay
+  // preview-on-release for now (see the comment on the cache functions).
+  const previewSeedRef = useRef(0)
+
+  const handlePreviewBegin = () => {
+    if (useStore.getState().activeTool !== 'brush') return
+    if (useStore.getState().activeGroupId) return
+    if (!activeId) return
+    previewSeedRef.current = Math.floor(Math.random() * 1e6)
+    beginStrokePreview(activeId)
+  }
+
+  const handlePreviewDelta = (stageSegment: number[]) => {
+    if (useStore.getState().activeTool !== 'brush') return
+    if (useStore.getState().activeGroupId) return
+    if (!activeId) return
+    const engine = getPhysicalToolEngine(workshopTool)
+    if (!engine) return
+    const layer = layers[activeId]
+    if (!layer) return
+    const local: number[] = []
+    for (let i = 0; i < stageSegment.length; i += 2) {
+      const p = toLocal(activeId, stageSegment[i], stageSegment[i + 1])
+      local.push(p.x, p.y)
+    }
+    const previewOp: SheetOp = {
+      tool: engine.id,
+      points: local,
+      parameters: { ...toolParameters[engine.id] },
+      seed: previewSeedRef.current,
+      paperType: layer.effects.paperType,
+      elapsedMs: 16,
+      reference: referenceDevelopment.binding(engine.id),
+    }
+    if (applyStrokePreviewDelta(activeId, previewOp, layer.effects, layer.seed)) {
+      layerRedrawRegistry.get(activeId)?.()
+    }
+  }
+
   // Commit one physical-tool stroke to the active layer as an ordered op.
   const handleStroke = (stagePoints: number[], elapsedMs: number) => {
+    // Whatever the live preview did to the working state gets thrown away
+    // right here — the real commit below always recomputes the final,
+    // exact, deterministic result from the full point list, same as if no
+    // preview had ever run.
+    if (activeId) endStrokePreview(activeId)
     if (useStore.getState().activeTool !== 'brush') return
     if (!activeId) return
     const engine = getPhysicalToolEngine(workshopTool)
@@ -574,7 +635,13 @@ export function Viewport() {
         )}
         {activeTool === 'brush' && activeId && toolCursor && (
           <KLayer>
-            <PhysicalToolInput onStroke={handleStroke} cursor={toolCursor} navGesture={spaceRef} />
+            <PhysicalToolInput
+              onStroke={handleStroke}
+              onPreviewBegin={handlePreviewBegin}
+              onPreviewDelta={handlePreviewDelta}
+              cursor={toolCursor}
+              navGesture={spaceRef}
+            />
           </KLayer>
         )}
         {doc && (dragGuides.x !== null || dragGuides.y !== null) && (

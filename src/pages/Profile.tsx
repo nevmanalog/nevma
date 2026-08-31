@@ -177,7 +177,11 @@ export function Profile() {
                     {editing ? t('cancel') : t('profileEdit')}
                   </button>
                 ) : (
-                  <button className="profile-follow-btn" disabled={followBusy} onClick={toggleFollow}>
+                  <button
+                    className={`profile-follow-btn${following ? ' is-following' : ''}`}
+                    disabled={followBusy}
+                    onClick={toggleFollow}
+                  >
                     {following ? t('profileUnfollow') : t('profileFollow')}
                   </button>
                 )}
