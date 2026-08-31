@@ -11,7 +11,7 @@ export const scratchesDefaults: ToolParameterValues = {
 }
 
 export const scratchesControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 2, max: 120, step: 1, format: 'pixels' },
-  { key: 'pressure', labelKey: 'brPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'randomness', labelKey: 'brRandom', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hScratchSize', kind: 'range', min: 2, max: 120, step: 1, format: 'pixels' },
+  { key: 'pressure', labelKey: 'brPressure', helpKey: 'hScratchPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'randomness', labelKey: 'brRandom', helpKey: 'hScratchRandom', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
 ]

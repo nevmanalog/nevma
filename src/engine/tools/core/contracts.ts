@@ -18,6 +18,7 @@ export type ParameterFormat = 'number' | 'pixels' | 'percent' | 'degrees'
 export interface ToolParameterSpec {
   key: string
   labelKey: TKey
+  helpKey: TKey
   kind: 'range' | 'color'
   min?: number
   max?: number

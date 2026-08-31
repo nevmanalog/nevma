@@ -12,9 +12,9 @@ export const markerDefaults: ToolParameterValues = {
 }
 
 export const markerControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 2, max: 120, step: 1, format: 'pixels' },
-  { key: 'pressure', labelKey: 'brPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'pigmentLoad', labelKey: 'brInk', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'bleed', labelKey: 'brBleed', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
-  { key: 'color', labelKey: 'brColor', kind: 'color' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hMarkerSize', kind: 'range', min: 2, max: 120, step: 1, format: 'pixels' },
+  { key: 'pressure', labelKey: 'brPressure', helpKey: 'hMarkerPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'pigmentLoad', labelKey: 'brInk', helpKey: 'hMarkerInk', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'bleed', labelKey: 'brBleed', helpKey: 'hMarkerBleed', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'color', labelKey: 'brColor', helpKey: 'hMarkerColor', kind: 'color' },
 ]

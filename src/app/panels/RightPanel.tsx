@@ -329,7 +329,7 @@ function ToolControls({ tool }: { tool: PhysicalToolId }) {
           const value = typeof values[spec.key] === 'string' ? values[spec.key] as string : '#222222'
           return (
             <label className="color-row" key={spec.key}>
-              <span className="lbl">{t(spec.labelKey)}</span>
+              <span className="lbl">{t(spec.labelKey)}<HelpButton paramKey={`${tool}.${spec.key}`} helpKey={spec.helpKey} /></span>
               <input type="color" value={value} onChange={(event) => setToolParameter(tool, spec.key, event.target.value)} />
             </label>
           )
@@ -339,6 +339,7 @@ function ToolControls({ tool }: { tool: PhysicalToolId }) {
           <SingleSlider
             key={spec.key}
             labelKey={spec.labelKey}
+            helpKey={spec.helpKey}
             paramKey={`${tool}.${spec.key}`}
             value={value}
             min={spec.min ?? 0}
@@ -437,7 +438,7 @@ function AppliedOpRow({ activeId, op, index, isOpen, onToggleOpen }: {
                 const value = typeof values[spec.key] === 'string' ? values[spec.key] as string : '#222222'
                 return (
                   <label className="color-row" key={spec.key}>
-                    <span className="lbl">{t(spec.labelKey)}</span>
+                    <span className="lbl">{t(spec.labelKey)}<HelpButton paramKey={`${op.tool}.${spec.key}`} helpKey={spec.helpKey} /></span>
                     <input type="color" value={value}
                       onChange={(ev) => updateSheetOpParameters(activeId, index, { [spec.key]: ev.target.value })} />
                   </label>
@@ -448,6 +449,7 @@ function AppliedOpRow({ activeId, op, index, isOpen, onToggleOpen }: {
                 <SingleSlider
                   key={spec.key}
                   labelKey={spec.labelKey}
+                  helpKey={spec.helpKey}
                   paramKey={`${op.tool}.${spec.key}`}
                   value={value}
                   min={spec.min ?? 0}

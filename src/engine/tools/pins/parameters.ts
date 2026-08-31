@@ -11,5 +11,5 @@ export const pinsDefaults: ToolParameterValues = {
 }
 
 export const pinsControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 3, max: 80, step: 1, format: 'pixels' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hPinsSize', kind: 'range', min: 3, max: 80, step: 1, format: 'pixels' },
 ]

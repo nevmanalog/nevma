@@ -14,11 +14,11 @@ export const paintbrushDefaults: ToolParameterValues = {
 }
 
 export const paintbrushControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 3, max: 180, step: 1, format: 'pixels' },
-  { key: 'pressure', labelKey: 'brPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'paintLoad', labelKey: 'brLoad', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'wetSheen', labelKey: 'brWet', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
-  { key: 'blend', labelKey: 'brBlend', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
-  { key: 'randomness', labelKey: 'brRandom', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
-  { key: 'color', labelKey: 'brColor', kind: 'color' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hBrushSize', kind: 'range', min: 3, max: 180, step: 1, format: 'pixels' },
+  { key: 'pressure', labelKey: 'brPressure', helpKey: 'hBrushPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'paintLoad', labelKey: 'brLoad', helpKey: 'hBrushLoad', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'wetSheen', labelKey: 'brWet', helpKey: 'hBrushWet', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'blend', labelKey: 'brBlend', helpKey: 'hBrushBlend', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'randomness', labelKey: 'brRandom', helpKey: 'hBrushRandom', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'color', labelKey: 'brColor', helpKey: 'hBrushColor', kind: 'color' },
 ]

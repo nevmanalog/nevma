@@ -12,5 +12,5 @@ export const patchDefaults: ToolParameterValues = {
 }
 
 export const patchControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 8, max: 240, step: 1, format: 'pixels' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hPatchSize', kind: 'range', min: 8, max: 240, step: 1, format: 'pixels' },
 ]

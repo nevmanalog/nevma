@@ -1,7 +1,8 @@
 import type { PhysicalToolEngine, ToolStageContext } from '../core/contracts'
-import { emptyStage } from '../core/contracts'
 import { forEachImpact, impactBounds, rasterizeRibbon, smoothStep } from '../core/geometry'
-import { alive, clamp01, depositPigment, PAPER_ABSORPTION } from '../core/material'
+import {
+  alive, clamp01, depositPigment, exposePaper, multiplyRgb, PAPER_ABSORPTION,
+} from '../core/material'
 import { numberParameter, stringParameter } from '../core/parameters'
 import { hash2, hexToRgb, lerp, valueNoise } from '@/engine/sheet/state'
 import { markerControls, markerDefaults } from './parameters'
@@ -65,6 +66,46 @@ function paint({ state, op, parameters, impact: field }: ToolStageContext): void
   })
 }
 
+function paper({ state, op, impact: field }: ToolStageContext): void {
+  const absorption = PAPER_ABSORPTION[state.paperType] ?? 0.55
+  forEachImpact(field, state.w, ({ index, x, y, coverage }) => {
+    if (!alive(state, index)) return
+    // The solvent wicks into the fibre as it wets it, swelling it a touch,
+    // and a damp patch cockles the sheet just enough to catch light later —
+    // a marker fill on real paper is never perfectly flat.
+    const soak = coverage * absorption
+    state.porosity[index] = clamp01(state.porosity[index] + soak * 0.05)
+    const cockle = (valueNoise(x * 0.18, y * 0.18, op.seed + 31) - 0.5) * soak * 0.12
+    state.height[index] += cockle
+  })
+}
+
+function texture({ state, op, parameters, impact: field }: ToolStageContext): void {
+  const load = numberParameter(parameters, 'pigmentLoad', 0.8)
+  forEachImpact(field, state.w, ({ index, coverage, along, across }) => {
+    if (!alive(state, index)) return
+    // Fresh alcohol ink sits with a faint sheen for a moment before it soaks
+    // in — it never has the flat matte finish of pigment that's already dry.
+    state.gloss[index] = clamp01(state.gloss[index] + coverage * 0.18 * load)
+    // The felt tip is a bundle of fibres, not a smooth wedge: fine parallel
+    // channels run the length of the stroke instead of one uniformly flat
+    // band of colour.
+    const channel = valueNoise(across * 9 + op.seed * 3, along * 45, op.seed + 4)
+    const streak = smoothStep(0.55, 0.85, channel) * coverage * 0.12
+    if (streak > 0) multiplyRgb(state, index, 1 - streak)
+  })
+}
+
+function variability({ state, op, impact: field }: ToolStageContext): void {
+  forEachImpact(field, state.w, ({ index, x, y, coverage }) => {
+    if (!alive(state, index) || coverage < 0.3) return
+    // A felt tip occasionally catches on a raised paper-tooth peak and
+    // skips, leaving a tiny fleck of bare paper inside an otherwise solid
+    // fill — a flawlessly even fill is the tell of a flat colour layer.
+    if (hash2(x, y, op.seed + 19) > 0.965) exposePaper(state, index, 0.55)
+  })
+}
+
 export const markerEngine: PhysicalToolEngine = {
   id: 'marker',
   defaults: markerDefaults,
@@ -83,10 +124,10 @@ export const markerEngine: PhysicalToolEngine = {
   modules: {
     impact,
     interactions,
-    paper: emptyStage,
+    paper,
     paint,
-    texture: emptyStage,
-    variability: emptyStage,
+    texture,
+    variability,
     render: ({ impact: field }) => impactBounds(field),
   },
   dynamics: (parameters) => ({

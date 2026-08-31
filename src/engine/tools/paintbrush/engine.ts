@@ -1,7 +1,8 @@
 import type { PhysicalToolEngine, ToolStageContext } from '../core/contracts'
-import { emptyStage } from '../core/contracts'
 import { forEachImpact, impactBounds, rasterizeRibbon, smoothStep } from '../core/geometry'
-import { alive, clamp01, depositPigment, PAPER_ABSORPTION } from '../core/material'
+import {
+  addWater, alive, clamp01, depositPigment, PAPER_ABSORPTION,
+} from '../core/material'
 import { numberParameter, stringParameter } from '../core/parameters'
 import { fbm, hash2, hexToRgb, lerp, valueNoise } from '@/engine/sheet/state'
 import { paintbrushControls, paintbrushDefaults } from './parameters'
@@ -93,6 +94,38 @@ function texture({ state, parameters, impact: field }: ToolStageContext): void {
   })
 }
 
+function paper({ state, op, parameters, impact: field }: ToolStageContext): void {
+  const wet = numberParameter(parameters, 'wetSheen', 0.35)
+  const absorption = PAPER_ABSORPTION[state.paperType] ?? 0.55
+  forEachImpact(field, state.w, ({ index, x, y, coverage }) => {
+    if (!alive(state, index)) return
+    // A loaded brush carries real water, not just colour. It has to soak
+    // into the sheet the way a plain wash does — otherwise the paint in
+    // texture() below reads as printed onto bone-dry paper underneath it,
+    // and a heavy wet pass never cockles the sheet the way it should.
+    const soak = coverage * wet * absorption
+    addWater(state, index, soak * 0.35)
+    state.porosity[index] = clamp01(state.porosity[index] + soak * 0.04)
+    const cockle = (valueNoise(x * 0.1, y * 0.1, op.seed + 61) - 0.5) * soak * 0.2
+    state.height[index] += cockle
+  })
+}
+
+function variability({ state, op, parameters, impact: field }: ToolStageContext): void {
+  const randomness = numberParameter(parameters, 'randomness', 0.35)
+  forEachImpact(field, state.w, ({ index, x, y, coverage, across }) => {
+    if (!alive(state, index)) return
+    const rim = Math.abs(across)
+    if (rim < 0.68) return
+    // A stray splayed bristle occasionally flicks a fleck of paint just past
+    // the nominal edge instead of the edge staying a ruler-clean line.
+    if (hash2(x, y, op.seed + 37) > 1 - randomness * 0.06) {
+      state.paint[index] = clamp01(state.paint[index] + coverage * 0.4)
+      state.gloss[index] = clamp01(state.gloss[index] + coverage * 0.1)
+    }
+  })
+}
+
 export const paintbrushEngine: PhysicalToolEngine = {
   id: 'brush',
   defaults: paintbrushDefaults,
@@ -111,10 +144,10 @@ export const paintbrushEngine: PhysicalToolEngine = {
   modules: {
     impact,
     interactions,
-    paper: emptyStage,
+    paper,
     paint,
     texture,
-    variability: emptyStage,
+    variability,
     render: ({ impact: field }) => impactBounds(field),
   },
   dynamics: (parameters) => ({

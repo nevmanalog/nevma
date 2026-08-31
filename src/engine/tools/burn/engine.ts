@@ -29,7 +29,13 @@ const impact: PhysicalToolEngine['modules']['impact'] = (state, op, parameters) 
       const radius = Math.hypot(along, across)
       const tongue = (fbm(x * 0.12, y * 0.12, seed) - 0.5) * irregularity * 1.4
       const edge = clamp01(0.82 + tongue)
-      if (radius >= edge) return 0
+      // A real scorch doesn't stop at the char line — heat that never gets
+      // hot enough to darken the fibre still bleeds out a good deal further,
+      // as a faint warm halo. Cutting the mask off hard at `edge` is what
+      // made a burn read as a flat brown disc with a ruled boundary.
+      const haloEdge = edge * 1.55
+      if (radius >= haloEdge) return 0
+      if (radius >= edge) return smoothStep(haloEdge, edge, radius) * 0.16
       return smoothStep(edge, edge * 0.35, radius)
     },
   })
@@ -122,6 +128,16 @@ function variability({ state, op, parameters, impact: field }: ToolStageContext)
     // a little later on tougher grain, so the rim never traces a clean circle.
     const jitter = (valueNoise(x * 0.6, y * 0.6, op.seed + 13) - 0.5) * 0.12
     const local = clamp01(threshold + jitter - state.weak[index] * 0.12 - state.fiber[index] * 0.08)
+    // Just short of burning through, the crust chars to near-black and
+    // starts to curl before it finally gives way. Without this the colour
+    // jumps straight from scorched brown to a punched, empty hole, which
+    // reads as a vector cutout rather than something that actually burned.
+    if (state.char[index] > local - 0.12 && state.char[index] <= local) {
+      const crustT = clamp01((state.char[index] - (local - 0.12)) / 0.12)
+      multiplyRgb(state, index, 1 - crustT * 0.55)
+      state.height[index] -= crustT * 0.2
+      state.gloss[index] = clamp01(state.gloss[index] * (1 - crustT * 0.6))
+    }
     if (state.char[index] > local) {
       state.rgba[index * 4 + 3] = 0
       state.water[index] = 0

@@ -11,6 +11,6 @@ export const glueDefaults: ToolParameterValues = {
 }
 
 export const glueControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 3, max: 160, step: 1, format: 'pixels' },
-  { key: 'pressure', labelKey: 'brPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hGlueSize', kind: 'range', min: 3, max: 160, step: 1, format: 'pixels' },
+  { key: 'pressure', labelKey: 'brPressure', helpKey: 'hGluePressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
 ]

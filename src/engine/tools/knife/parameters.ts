@@ -11,8 +11,8 @@ export const knifeDefaults: ToolParameterValues = {
 }
 
 export const knifeControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 2, max: 80, step: 1, format: 'pixels' },
-  { key: 'pressure', labelKey: 'brPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'kerfWidth', labelKey: 'brKerf', kind: 'range', min: 0.1, max: 1, step: 0.01, format: 'percent' },
-  { key: 'fiberFeather', labelKey: 'brFiber', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hKnifeSize', kind: 'range', min: 2, max: 80, step: 1, format: 'pixels' },
+  { key: 'pressure', labelKey: 'brPressure', helpKey: 'hKnifePressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'kerfWidth', labelKey: 'brKerf', helpKey: 'hKnifeKerf', kind: 'range', min: 0.1, max: 1, step: 0.01, format: 'percent' },
+  { key: 'fiberFeather', labelKey: 'brFiber', helpKey: 'hKnifeFiber', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
 ]

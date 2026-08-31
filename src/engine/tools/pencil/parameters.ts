@@ -13,9 +13,9 @@ export const pencilDefaults: ToolParameterValues = {
 }
 
 export const pencilControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 1, max: 40, step: 1, format: 'pixels' },
-  { key: 'pressure', labelKey: 'brPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'grit', labelKey: 'brGrit', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
-  { key: 'hardness', labelKey: 'brHardness', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
-  { key: 'color', labelKey: 'brColor', kind: 'color' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hPencilSize', kind: 'range', min: 1, max: 40, step: 1, format: 'pixels' },
+  { key: 'pressure', labelKey: 'brPressure', helpKey: 'hPencilPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'grit', labelKey: 'brGrit', helpKey: 'hPencilGrit', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'hardness', labelKey: 'brHardness', helpKey: 'hPencilHardness', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'color', labelKey: 'brColor', helpKey: 'hPencilColor', kind: 'color' },
 ]

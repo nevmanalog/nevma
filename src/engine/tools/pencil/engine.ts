@@ -1,5 +1,4 @@
 import type { PhysicalToolEngine, ToolStageContext } from '../core/contracts'
-import { emptyStage } from '../core/contracts'
 import { forEachImpact, impactBounds, rasterizeRibbon } from '../core/geometry'
 import { alive, clamp01, depositPigment } from '../core/material'
 import { numberParameter, stringParameter } from '../core/parameters'
@@ -77,6 +76,34 @@ function texture({ state, parameters, impact: field }: ToolStageContext): void {
   })
 }
 
+function paper({ state, parameters, impact: field }: ToolStageContext): void {
+  const pressure = clamp01(numberParameter(parameters, 'pressure', 0.55))
+  forEachImpact(field, state.w, ({ index, coverage }) => {
+    if (!alive(state, index)) return
+    // Graphite that doesn't stick to a tooth peak doesn't vanish — it shears
+    // off as fine dust and settles in the valleys right beside the line.
+    // That's what gives a pencil stroke its soft grey penumbra under raking
+    // light, instead of a razor-clean printed edge.
+    state.dust[index] = clamp01(state.dust[index] + coverage * pressure * 0.1)
+  })
+}
+
+function variability({ state, op, parameters, impact: field }: ToolStageContext): void {
+  const hardness = clamp01(numberParameter(parameters, 'hardness', 0.4))
+  forEachImpact(field, state.w, ({ index, x, y, coverage, speed }) => {
+    if (!alive(state, index) || coverage < 0.25) return
+    // A hard, sharp point skips clean off the paper on a fast stroke far
+    // more readily than a soft one drags through it. An unbroken line at
+    // speed is the tell of a vector stroke rather than a point actually
+    // dragged across real tooth.
+    const skipChance = speed * (0.05 + hardness * 0.1)
+    if (hash2(x, y, op.seed + 43) < skipChance) {
+      state.paint[index] *= 0.35
+      state.ink[index] *= 0.35
+    }
+  })
+}
+
 export const pencilEngine: PhysicalToolEngine = {
   id: 'pencil',
   defaults: pencilDefaults,
@@ -95,10 +122,10 @@ export const pencilEngine: PhysicalToolEngine = {
   modules: {
     impact,
     interactions,
-    paper: emptyStage,
+    paper,
     paint,
     texture,
-    variability: emptyStage,
+    variability,
     render: ({ impact: field }) => impactBounds(field),
   },
   dynamics: () => ({ steps: 1, spread: 1 }),

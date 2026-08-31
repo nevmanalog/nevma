@@ -13,8 +13,8 @@ export const sandpaperDefaults: ToolParameterValues = {
 }
 
 export const sandpaperControls: readonly ToolParameterSpec[] = [
-  { key: 'size', labelKey: 'brSize', kind: 'range', min: 4, max: 220, step: 1, format: 'pixels' },
-  { key: 'pressure', labelKey: 'brPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
-  { key: 'angle', labelKey: 'brAngle', kind: 'range', min: 0, max: 360, step: 1, format: 'degrees' },
-  { key: 'randomness', labelKey: 'brRandom', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
+  { key: 'size', labelKey: 'brSize', helpKey: 'hSandSize', kind: 'range', min: 4, max: 220, step: 1, format: 'pixels' },
+  { key: 'pressure', labelKey: 'brPressure', helpKey: 'hSandPressure', kind: 'range', min: 0.05, max: 1, step: 0.01, format: 'percent' },
+  { key: 'angle', labelKey: 'brAngle', helpKey: 'hSandAngle', kind: 'range', min: 0, max: 360, step: 1, format: 'degrees' },
+  { key: 'randomness', labelKey: 'brRandom', helpKey: 'hSandRandom', kind: 'range', min: 0, max: 1, step: 0.01, format: 'percent' },
 ]
