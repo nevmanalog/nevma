@@ -38,10 +38,10 @@ function paint({ state, parameters, impact: field }: ToolStageContext): void {
   })
 }
 
-function texture({ state, parameters, impact: field }: ToolStageContext): void {
+function texture({ state, op, parameters, impact: field }: ToolStageContext): void {
   const pressure = numberParameter(parameters, 'pressure', 0.5)
   const ridgeHeight = numberParameter(parameters, 'ridgeHeight', 0.5)
-  forEachImpact(field, state.w, ({ index, coverage }) => {
+  forEachImpact(field, state.w, ({ index, x, y, coverage, along, across }) => {
     if (!alive(state, index)) return
     const amount = coverage * pressure
     state.height[index] -= amount * ridgeHeight * 0.7
@@ -49,7 +49,14 @@ function texture({ state, parameters, impact: field }: ToolStageContext): void {
     state.paint[index] = Math.max(0, state.paint[index] - amount * 0.25)
     state.film[index] = Math.max(0, state.film[index] - amount * 0.2)
     state.gloss[index] = clamp01(state.gloss[index] + amount * 0.25)
-    addRgb(state, index, amount * 10)
+    // A real scratch is a groove cut into the surface, not a flat brightened
+    // stripe: light catches one wall and the other falls into shadow.
+    // `across`'s sign gives a consistent bevel direction across the width
+    // of the stroke, and the length-wise noise keeps the lift from reading
+    // as a constant-brightness band — real abrasion depth wanders.
+    const bevel = across >= 0 ? 1 : -0.4
+    const wander = 0.55 + 0.75 * valueNoise(along * 5 + op.seed * 5.0, x * 0.02 + y * 0.02, op.seed + 71)
+    addRgb(state, index, amount * 14 * wander * bevel)
   })
 }
 

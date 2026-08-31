@@ -59,8 +59,13 @@ void main() {
     aLarge = 6.0;  aMed = 3.0; aMicro = 1.5; soft = 1.2;
     coreWidth = 5.0; coreStr = 0.85; fiberLen = 6.0;  fiberAmt = 0.8;
   } else {
-    aLarge = 0.0;  aMed = 0.25; aMicro = 0.4; soft = 0.9;
-    coreWidth = 1.5; coreStr = 0.55; fiberLen = 0.0; fiberAmt = 0.0;
+    // "Clean" scissors still isn't a vector path — a hand guiding a blade
+    // wavers by a pixel or two even when trying to cut straight. Previously
+    // aMed/aMicro here were near zero, which produced a mathematically
+    // straight line: exactly what reads as a clip-path cutout rather than
+    // scissors through paper.
+    aLarge = 0.0;  aMed = 0.9; aMicro = 0.7; soft = 1.0;
+    coreWidth = 1.6; coreStr = 0.55; fiberLen = 0.0; fiberAmt = 0.0;
   }
 
   // Edge interior colour: the exposed paper stock, NOT a drawn outline. We
@@ -74,6 +79,9 @@ void main() {
   else if (torn) coreCol = mix(stock, vec3(0.90, 0.86, 0.78), 0.5);  // warm pale fibre core
   else           coreCol = mix(stock, vec3(0.93, 0.91, 0.86), 0.4);  // clean paper cut
   coreCol = mix(coreCol, u_edgeColor, 0.2); // subtle user tint only
+  // Fine paper grain: a flat tint reads as a printed/vector fill, real
+  // exposed paper stock has visible fibre texture even close up.
+  coreCol += (fbm(pw * 0.6 + u_seed * 17.0, 2) - 0.5) * 0.05;
 
   // --- multi-scale boundary warp (large damage / fibers / micro) ----------
   float large  = fbm(pw * 0.012 + u_seed * 3.0, 4);
@@ -81,6 +89,12 @@ void main() {
   float micro  = fbm(pw * 0.20  + u_seed * 11.0, 3);
   float warp = large * aLarge + medium * aMed + micro * aMicro;
   float sdw = sd + warp;              // warped signed distance (px)
+
+  // Core width breathes with the same medium-scale noise as the boundary
+  // warp, so a wider/narrower stretch of exposed paper lines up with where
+  // the cut line itself wobbles rather than jittering independently.
+  float widthJitter = 1.0 + (medium - 0.5) * (worn ? 0.5 : (torn ? 0.4 : 0.7));
+  coreWidth *= clamp(widthJitter, 0.35, 1.85);
 
   // --- inside/outside + which side we keep --------------------------------
   float inside = smoothstep(-soft, soft, sdw);
