@@ -779,30 +779,27 @@ button { font-family: inherit; touch-action: manipulation; }
 .placeholder input[type='range'] { width: 100%; }
 .placeholder .hint { margin: 5px 0 0; font-size: 11px; }
 
-/* ============ APPLIED TOOLS — per-tool tabs ============ */
+/* ============ APPLIED TOOLS — grouped into per-tool folders ============ */
 .applied-ops-stack { margin-bottom: 12px; }
-.applied-ops-tabs {
-  display: flex; flex-wrap: wrap; gap: 3px; margin: 0 0 8px;
-  padding: 4px; background: var(--xp-face-deeper);
-  border-top: 1px solid var(--xp-shadow-dark); border-left: 1px solid var(--xp-shadow-dark);
-  border-right: 1px solid var(--xp-white); border-bottom: 1px solid var(--xp-white);
+.applied-ops-title { display: flex; align-items: center; gap: 6px; }
+.applied-ops-total {
+  font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--text-dim); background: var(--xp-face-deeper); border-radius: 8px;
+  padding: 1px 6px; line-height: 1.4;
 }
-.applied-ops-tab {
-  display: flex; align-items: center; gap: 4px; padding: 3px 7px; font-size: 11px;
-  color: var(--text); cursor: pointer; background: var(--xp-face) !important;
-  border-top: 1px solid var(--xp-white) !important; border-left: 1px solid var(--xp-white) !important;
-  border-right: 1px solid var(--xp-shadow-dark) !important; border-bottom: 1px solid var(--xp-shadow-dark) !important;
+/* Folder row: same groupbox chrome as .acc, plus a count badge next to the name. */
+.applied-group-count {
+  font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--text-dim); background: var(--xp-face-deeper); border-radius: 8px;
+  padding: 1px 6px; margin-right: 2px; line-height: 1.4;
 }
-.applied-ops-tab:hover { background: linear-gradient(180deg,#EAF2FD,#CBE2FB) !important; }
-.applied-ops-tab.active {
-  background: var(--xp-select) !important; color: #fff !important;
-  border-top-color: var(--xp-shadow-dark) !important; border-left-color: var(--xp-shadow-dark) !important;
-  border-right-color: var(--xp-white) !important; border-bottom-color: var(--xp-white) !important;
-}
-.applied-ops-tab-icon { font-size: 12px; line-height: 1; }
-.applied-ops-tab-count {
-  font-size: 10px; font-variant-numeric: tabular-nums; opacity: 0.75;
-  min-width: 13px; text-align: center;
+.applied-group-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+/* Sub-rows inside an open folder: no left icon slot, a light indent instead,
+   and a numbered badge in its place so strokes stay distinguishable. */
+.applied-op-nested .acc-head { padding: 5px 8px; gap: 7px; }
+.applied-op-order {
+  font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--text-dim); width: 16px; text-align: center; flex-shrink: 0;
 }
 
 /* ============ CONTROLS ============ */

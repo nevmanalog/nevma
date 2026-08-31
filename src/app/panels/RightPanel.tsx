@@ -401,8 +401,9 @@ function WorkshopToolBody({ activeId, toolId, active }: { activeId: string; tool
 // a stack of switches/knobs, not a reorderable layer list.
 // ---------------------------------------------------------------------------
 
-function AppliedOpRow({ activeId, op, index, isOpen, onToggleOpen }: {
-  activeId: string; op: SheetOp; index: number; isOpen: boolean; onToggleOpen: () => void
+function AppliedOpRow({ activeId, op, index, order, nested, isOpen, onToggleOpen }: {
+  activeId: string; op: SheetOp; index: number; order?: number; nested?: boolean
+  isOpen: boolean; onToggleOpen: () => void
 }) {
   const toggleSheetOp = useStore((s) => s.toggleSheetOp)
   const updateSheetOpParameters = useStore((s) => s.updateSheetOpParameters)
@@ -418,10 +419,12 @@ function AppliedOpRow({ activeId, op, index, isOpen, onToggleOpen }: {
     return value.toFixed(2)
   }
   return (
-    <div className={`acc applied-op ${isOpen ? 'open' : ''} ${enabled ? '' : 'disabled'}`}>
+    <div className={`acc applied-op ${nested ? 'applied-op-nested' : ''} ${isOpen ? 'open' : ''} ${enabled ? '' : 'disabled'}`}>
       <button className="acc-head" onClick={onToggleOpen}>
-        <span className="acc-icon">{tool?.icon ?? '🔧'}</span>
-        <span className="acc-title">{tool ? t(tool.labelKey) : op.tool}</span>
+        {nested
+          ? <span className="applied-op-order">#{order}</span>
+          : <span className="acc-icon">{tool?.icon ?? '🔧'}</span>}
+        <span className="acc-title">{tool ? t(tool.labelKey) : op.tool}{nested ? '' : (order ? ` #${order}` : '')}</span>
         {enabled && <span className="acc-dot" title="on" />}
         <span className="acc-chev">{isOpen ? '▾' : '▸'}</span>
       </button>
@@ -470,6 +473,44 @@ function AppliedOpRow({ activeId, op, index, isOpen, onToggleOpen }: {
   )
 }
 
+/** One collapsible folder per tool — icon, name, count, and an "any enabled"
+ *  dot. Expanding it reveals every individual stroke of that tool as its own
+ *  sub-row (still independently switchable/tunable/removable), instead of
+ *  every stroke sitting flat in the list. This is what keeps the panel short
+ *  when a tool has been used many times: 11 marker strokes collapse into one
+ *  "Маркер · 11" row until you actually want to touch one of them. */
+function AppliedToolGroup({ activeId, tool, rows, isOpen, onToggle, openIndex, setOpenIndex }: {
+  activeId: string
+  tool: (typeof WORKSHOP_TOOLS)[number]
+  rows: { op: SheetOp; index: number }[]
+  isOpen: boolean
+  onToggle: () => void
+  openIndex: number | null
+  setOpenIndex: (v: number | null) => void
+}) {
+  const t = useT()
+  const enabledCount = rows.filter(({ op }) => op.enabled !== false).length
+  return (
+    <div className={`acc applied-group ${isOpen ? 'open' : ''}`}>
+      <button className="acc-head" onClick={onToggle}>
+        <span className="acc-icon">{tool.icon}</span>
+        <span className="acc-title">{t(tool.labelKey)}</span>
+        <span className="applied-group-count">{rows.length}</span>
+        {enabledCount > 0 && <span className="acc-dot" title="on" />}
+        <span className="acc-chev">{isOpen ? '▾' : '▸'}</span>
+      </button>
+      {isOpen && (
+        <div className="acc-body applied-group-body">
+          {rows.map(({ op, index }, i) => (
+            <AppliedOpRow key={index} activeId={activeId} op={op} index={index} order={i + 1} nested
+              isOpen={openIndex === index} onToggleOpen={() => setOpenIndex(openIndex === index ? null : index)} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AppliedToolsStack({ activeId }: { activeId: string }) {
   // sheetOps lives outside React state (like the bitmap maps); bakeToken is its
   // React-visible version counter, so subscribing to it re-reads the list on
@@ -477,47 +518,40 @@ function AppliedToolsStack({ activeId }: { activeId: string }) {
   useStore((s) => s.bakeToken[activeId])
   const ops = sheetOps.get(activeId) ?? []
   const [openIndex, setOpenIndex] = useState<number | null>(null)
-  // Which tool's tab is selected. null = "All". Reset back to "All" whenever
-  // the active layer changes so switching layers never leaves a stale filter
-  // that happens to hide every stroke.
-  const [filter, setFilter] = useState<PhysicalToolId | null>(null)
-  useEffect(() => { setFilter(null) }, [activeId])
+  // Only one tool's folder open at a time (same accordion pattern as the
+  // Paper/Printer/Ink/Color sections above) — this, not a flat filtered list,
+  // is what stops the panel growing every time another stroke is added.
+  // Reset whenever the active layer changes so switching layers never leaves
+  // a stale folder open for a tool the new layer may not even have.
+  const [openTool, setOpenTool] = useState<PhysicalToolId | null>(null)
+  useEffect(() => { setOpenTool(null); setOpenIndex(null) }, [activeId])
   const t = useT()
   if (ops.length === 0) return null
 
-  // One tab per tool actually used on this layer, in the workshop's fixed
-  // station order (not first-use order) so the tab strip doesn't jump around
-  // as strokes are added.
+  // One folder per tool actually used on this layer, in the workshop's fixed
+  // station order (not first-use order) so the list doesn't jump around as
+  // strokes are added.
   const usedTools = WORKSHOP_TOOLS.filter((w) => ops.some((op) => op.tool === w.id))
-  const countFor = (toolId: PhysicalToolId) => ops.filter((op) => op.tool === toolId).length
-  const rows = ops
-    .map((op, index) => ({ op, index }))
-    .filter(({ op }) => !filter || op.tool === filter)
+  const grouped = ops.map((op, index) => ({ op, index }))
 
   return (
     <div className="applied-ops-stack">
-      <div className="opt-label" style={{ margin: '0 0 4px' }}>{t('appliedToolsTitle')}</div>
-      {usedTools.length > 1 && (
-        <div className="applied-ops-tabs">
-          <button className={`applied-ops-tab ${filter === null ? 'active' : ''}`} onClick={() => setFilter(null)}>
-            {t('appliedToolsAll')}
-            <span className="applied-ops-tab-count">{ops.length}</span>
-          </button>
-          {usedTools.map((w) => (
-            <button key={w.id} className={`applied-ops-tab ${filter === w.id ? 'active' : ''}`}
-              data-tip={t(w.labelKey)} onClick={() => setFilter(w.id as PhysicalToolId)}>
-              <span className="applied-ops-tab-icon">{w.icon}</span>
-              <span className="applied-ops-tab-count">{countFor(w.id as PhysicalToolId)}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {rows.length === 0
-        ? <p className="hint">{t('appliedToolsEmptyFilter')}</p>
-        : rows.map(({ op, index }) => (
-          <AppliedOpRow key={index} activeId={activeId} op={op} index={index}
-            isOpen={openIndex === index} onToggleOpen={() => setOpenIndex((v) => (v === index ? null : index))} />
-        ))}
+      <div className="opt-label applied-ops-title" style={{ margin: '0 0 4px' }}>
+        {t('appliedToolsTitle')}
+        <span className="applied-ops-total">{ops.length}</span>
+      </div>
+      {usedTools.map((w) => (
+        <AppliedToolGroup
+          key={w.id}
+          activeId={activeId}
+          tool={w}
+          rows={grouped.filter(({ op }) => op.tool === w.id)}
+          isOpen={openTool === w.id}
+          onToggle={() => { setOpenTool((v) => (v === w.id ? null : (w.id as PhysicalToolId))); setOpenIndex(null) }}
+          openIndex={openIndex}
+          setOpenIndex={setOpenIndex}
+        />
+      ))}
     </div>
   )
 }
