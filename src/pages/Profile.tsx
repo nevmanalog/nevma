@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { WinTitleBar } from '@/app/panels/WinTitleBar'
 import { StatusBar } from '@/app/panels/StatusBar'
+import { WindowHeader } from '@/app/panels/WindowHeader'
 import { useT } from '@/i18n'
 import { useRoute } from '@/state/route'
 import { useAuth } from '@/state/auth'
@@ -138,11 +139,7 @@ export function Profile() {
   return (
     <div className="landing-window">
       <WinTitleBar />
-      <div className="community-topbar">
-        <button className="community-back" onClick={() => navigate('community')}>← {t('back')}</button>
-        <h1 className="community-title">{t('profileTitle')}</h1>
-        <button className="community-open-editor" onClick={() => navigate('editor')}>✂ {t('openEditor')}</button>
-      </div>
+      <WindowHeader title={t('profileTitle')} onBack={() => navigate('community')} />
 
       <div className="community-scroll">
         {!isSupabaseConfigured && (

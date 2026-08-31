@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { WinTitleBar } from '@/app/panels/WinTitleBar'
 import { CommunityNav } from '@/app/panels/CommunityNav'
 import { StatusBar } from '@/app/panels/StatusBar'
+import { WindowHeader } from '@/app/panels/WindowHeader'
 import { useT } from '@/i18n'
 import { useRoute } from '@/state/route'
 import { useAuth } from '@/state/auth'
@@ -32,7 +33,6 @@ type SortMode = 'popular' | 'recent'
  */
 export function Community() {
   const t = useT()
-  const navigate = useRoute((s) => s.navigate)
   const closeWindow = useRoute((s) => s.closeWindow)
   const openProfile = useRoute((s) => s.openProfile)
   const openPostRoute = useRoute((s) => s.openPost)
@@ -113,19 +113,28 @@ export function Community() {
   const feed = usingMocks ? MOCK_POSTS : posts
   const openPost = posts.find((p) => p.id === openPostId) ?? (openPostId ? deepLinkedPosts[openPostId] : undefined) ?? null
 
+  // Latest `posts`/`deepLinkedPosts` for the effect below to read without
+  // depending on them: the effect intentionally re-runs only when
+  // `openPostId` changes or the feed goes from empty to loaded
+  // (`posts.length`), not on every post mutation (a like or comment count
+  // bump creates a new `posts` array but shouldn't re-trigger this fetch).
+  const postsRef = useRef(posts)
+  postsRef.current = posts
+  const deepLinkedPostsRef = useRef(deepLinkedPosts)
+  deepLinkedPostsRef.current = deepLinkedPosts
+
   // A `#/post/<id>` link (from a share URL) may point at a post that isn't
   // in the loaded feed at all — fetch it directly rather than showing
   // nothing just because it scrolled off the "30 most recent" list.
   useEffect(() => {
     if (!openPostId || !isSupabaseConfigured) return
-    if (posts.some((p) => p.id === openPostId) || deepLinkedPosts[openPostId]) return
+    if (postsRef.current.some((p) => p.id === openPostId) || deepLinkedPostsRef.current[openPostId]) return
     let cancelled = false
     fetchPostById(openPostId).then((post) => {
       if (cancelled || !post) return
       setDeepLinkedPosts((d) => ({ ...d, [post.id]: post }))
     })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPostId, posts.length])
 
   const visibleFeed = useMemo(() => {
@@ -151,15 +160,10 @@ export function Community() {
     <div className="landing-window">
       <WinTitleBar />
 
-      <div className="community-topbar">
-        <button className="community-back" onClick={() => closeWindow('community')}>← {t('back')}</button>
-        <h1 className="community-title">{t('communityTitle')}</h1>
-        <div className="community-topbar-actions">
-          <button className="community-open-editor" onClick={() => navigate('editor')}>✂ {t('openEditor')}</button>
-          <NotificationsBell />
-          <AuthWidget />
-        </div>
-      </div>
+      <WindowHeader title={t('communityTitle')} onBack={() => closeWindow('community')}>
+        <NotificationsBell />
+        <AuthWidget />
+      </WindowHeader>
 
       <CommunityNav active="feed" search={search} onSearch={setSearch} />
 

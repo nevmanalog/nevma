@@ -111,10 +111,13 @@ export const useAuth = create<AuthState>((set, get) => ({
     const client = supabase
 
     // Ignore stale async work: React 18 StrictMode (dev) invokes effects
-    // twice, and App.tsx's `useEffect(() => { initAuth() }, [initAuth])`
-    // has no cleanup, so without this a second `init()` call would leave
-    // two live `onAuthStateChange` subscriptions racing to `set()` the
-    // store from then on — including after this instance is torn down.
+    // twice. App.tsx's `useEffect(() => initAuth(), [initAuth])` does
+    // return `init()`'s cleanup function (the arrow body is an implicit
+    // return, and `init()` returns the unsubscribe closure below), so
+    // React does tear the first instance down before mounting the second —
+    // but that teardown still races the in-flight `loadProfile` promise
+    // from the first instance. Without this flag, that stale promise's
+    // `set()` calls could land after the second instance is already live.
     let cancelled = false
 
     const loadProfile = async (session: Session | null) => {

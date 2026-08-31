@@ -1,11 +1,16 @@
-import { useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react'
+import { Suspense, lazy, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react'
 import { useRoute, type WindowKind } from '@/state/route'
 import { useAuth } from '@/state/auth'
 import { useFloatingWindow } from './useFloatingWindow'
-import { Community } from '@/pages/Community'
-import { Profile } from '@/pages/Profile'
+import { PageLoading } from './PageLoading'
 import { useT } from '@/i18n'
 import logoUrl from '@/assets/nevma-logo.png'
+
+// Code-split alongside the Editor (see App.tsx) — Community pulls in the
+// whole community/social data layer, which someone who only ever opens the
+// Editor shouldn't have to download up front either.
+const Community = lazy(() => import('@/pages/Community').then((m) => ({ default: m.Community })))
+const Profile = lazy(() => import('@/pages/Profile').then((m) => ({ default: m.Profile })))
 
 const RESIZE_DIRS = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'] as const
 
@@ -113,7 +118,9 @@ function FloatingWindow({ kind, order, desktopRef }: { kind: WindowKind; order: 
       onMouseDown={onWindowMouseDown}
       onClick={onWindowClick}
     >
-      {kind === 'community' ? <Community /> : <Profile />}
+      <Suspense fallback={<PageLoading />}>
+        {kind === 'community' ? <Community /> : <Profile />}
+      </Suspense>
       {!maximized && RESIZE_DIRS.map((dir) => (
         <span key={dir} className={`win-resize win-resize-${dir}`} onMouseDown={startResize(dir)} />
       ))}

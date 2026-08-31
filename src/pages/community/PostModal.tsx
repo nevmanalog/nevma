@@ -74,8 +74,13 @@ export function PostModal({
       setLoadingComments(false)
     })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post.id])
+    // `currentUserId` genuinely belongs in the deps (not just to satisfy
+    // the linter): it decides each comment's `myReaction`, and this modal
+    // can stay mounted across a sign-in/sign-out (AuthModal layers on top
+    // of it rather than replacing it) — without refetching here, the
+    // like/dislike state shown would still reflect whoever was signed in
+    // when the modal first opened.
+  }, [post.id, currentUserId])
 
   const submitComment = async () => {
     if (!currentUserId) { onRequireAuth(); return }

@@ -947,6 +947,16 @@ input[type='range']::-moz-range-thumb {
 
 
 /* ===================== Desktop shell ===================== */
+/* Suspense fallback for lazy-loaded routes (Editor) and windows
+ * (Community/Profile) — fills whatever container it's dropped into
+ * (full-bleed page or floating window body alike). */
+.page-loading {
+  height: 100%; width: 100%; min-height: 200px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); color: var(--text-dim);
+  font-size: 12.5px;
+}
+
 /* Community/Profile float as windows on this wallpaper instead of filling
  * the screen edge to edge, and more than one can be open (and visible) at
  * once — see Desktop.tsx. The Editor is deliberately not wrapped in this —
