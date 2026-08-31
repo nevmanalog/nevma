@@ -8,7 +8,7 @@ import { renderLayerCached, dropLayerCache, getCachedMaterialState, beginStrokeP
 import { cutSelection } from '@/engine/cut'
 import { LassoTool } from './tools/LassoTool'
 import { PenTool } from './tools/PenTool'
-import { PhysicalToolInput } from './tools/PhysicalToolInput'
+import { PhysicalToolInput } from '@/engine/tools/PhysicalToolInput'
 import { useT } from '@/i18n'
 import { getPhysicalToolEngine, effectiveOps } from '@/engine/tools/registry'
 import { referenceDevelopment } from '@/engine/reference/development'
