@@ -159,6 +159,10 @@ interface AppState {
   updateSheetOpParameters: (layerId: string, index: number, patch: ToolParameterValues) => void
   /** Remove an already-applied tool op from the stack entirely. */
   removeSheetOp: (layerId: string, index: number) => void
+  /** Give an already-applied tool op a custom name ("левый край", "блик") so
+   *  it's easier to find among many strokes of the same tool. Pass an empty/
+   *  whitespace-only string to clear it back to the tool's default name. */
+  renameSheetOp: (layerId: string, index: number, label: string) => void
   undo: () => void
   redo: () => void
   jumpHistory: (appliedCount: number) => void
@@ -1171,6 +1175,24 @@ export const useStore = create<AppState>((set, get) => {
       after.splice(index, 1)
       const cmd: Command = {
         label: `Remove: ${before[index].tool}`,
+        execute() { sheetOps.set(layerId, after); bump(layerId) },
+        undo() { sheetOps.set(layerId, beforeArr); bump(layerId) },
+        redo() { this.execute() },
+      }
+      dispatch(cmd)
+    },
+
+    renameSheetOp: (layerId, index, label) => {
+      const before = sheetOps.get(layerId)
+      if (!before || !before[index]) return
+      const trimmed = label.trim()
+      const nextLabel = trimmed || undefined
+      if ((before[index].label ?? undefined) === nextLabel) return
+      const beforeArr = before.slice()
+      const after = before.slice()
+      after[index] = { ...after[index], label: nextLabel }
+      const cmd: Command = {
+        label: `Rename: ${before[index].tool}`,
         execute() { sheetOps.set(layerId, after); bump(layerId) },
         undo() { sheetOps.set(layerId, beforeArr); bump(layerId) },
         redo() { this.execute() },

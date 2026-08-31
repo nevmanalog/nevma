@@ -408,28 +408,53 @@ function AppliedOpRow({ activeId, op, index, order, nested, isOpen, onToggleOpen
   const toggleSheetOp = useStore((s) => s.toggleSheetOp)
   const updateSheetOpParameters = useStore((s) => s.updateSheetOpParameters)
   const removeSheetOp = useStore((s) => s.removeSheetOp)
+  const renameSheetOp = useStore((s) => s.renameSheetOp)
   const t = useT()
   const tool = WORKSHOP_TOOLS.find((w) => w.id === op.tool)
   const engine = getPhysicalToolEngine(op.tool)
   const enabled = op.enabled !== false
+  const defaultName = tool ? t(tool.labelKey) : op.tool
   const format = (kind: string | undefined, value: number) => {
     if (kind === 'pixels') return `${Math.round(value)} px`
     if (kind === 'percent') return `${Math.round(value * 100)}%`
     if (kind === 'degrees') return `${Math.round(value)}°`
     return value.toFixed(2)
   }
+
+  // Local draft so typing doesn't push an undo entry per keystroke — only
+  // committed (see commitLabel) on blur/Enter. Resynced whenever the stored
+  // label changes from elsewhere (undo/redo, switching rows).
+  const [labelDraft, setLabelDraft] = useState(op.label ?? '')
+  useEffect(() => setLabelDraft(op.label ?? ''), [op.label])
+  const commitLabel = () => {
+    if (labelDraft.trim() !== (op.label ?? '')) renameSheetOp(activeId, index, labelDraft)
+  }
+
   return (
     <div className={`acc applied-op ${nested ? 'applied-op-nested' : ''} ${isOpen ? 'open' : ''} ${enabled ? '' : 'disabled'}`}>
       <button className="acc-head" onClick={onToggleOpen}>
         {nested
           ? <span className="applied-op-order">#{order}</span>
           : <span className="acc-icon">{tool?.icon ?? '🔧'}</span>}
-        <span className="acc-title">{tool ? t(tool.labelKey) : op.tool}{nested ? '' : (order ? ` #${order}` : '')}</span>
+        <span className="acc-title">{op.label?.trim() || defaultName}{nested ? '' : (order ? ` #${order}` : '')}</span>
         {enabled && <span className="acc-dot" title="on" />}
         <span className="acc-chev">{isOpen ? '▾' : '▸'}</span>
       </button>
       {isOpen && (
         <div className="acc-body">
+          <label className="op-rename-row" onClick={(ev) => ev.stopPropagation()}>
+            <span className="lbl">{t('opRename')}</span>
+            <input
+              type="text"
+              className="op-rename-input"
+              value={labelDraft}
+              placeholder={defaultName}
+              maxLength={40}
+              onChange={(ev) => setLabelDraft(ev.target.value)}
+              onBlur={commitLabel}
+              onKeyDown={(ev) => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur() }}
+            />
+          </label>
           <label className="chk-row" onClick={(ev) => ev.stopPropagation()}>
             <input type="checkbox" checked={enabled} onChange={() => toggleSheetOp(activeId, index)} />
             {t('opEnabled')}

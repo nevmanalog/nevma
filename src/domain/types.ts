@@ -105,6 +105,11 @@ export interface SheetOp {
    *  stays in the stack, fully configured, so it can be switched back on.
    *  Undefined counts as enabled (older/loaded projects predate this field). */
   enabled?: boolean
+  /** User-given name ("левый край", "блик") shown instead of the tool name
+   *  in the Applied tools stack (RightPanel.tsx) — helps tell apart many
+   *  strokes of the same tool, which otherwise only differ by their #N
+   *  order badge. Undefined/empty falls back to the tool's default name. */
+  label?: string
 }
 
 export type LayerKind = 'base' | 'fragment' | 'blank'

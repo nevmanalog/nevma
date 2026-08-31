@@ -564,6 +564,7 @@ export const DICT = {
   appliedToolsEmptyFilter: { en: 'No strokes with this tool yet', ru: 'Пока нет слоёв этого инструмента' },
   opEnabled: { en: 'Enabled', ru: 'Включено' },
   opRemove: { en: 'Remove', ru: 'Удалить' },
+  opRename: { en: 'Name', ru: 'Название' },
 
   finExposure: { en: 'Exposure', ru: 'Экспозиция' },
   finExposureEv: { en: 'Exposure', ru: 'Экспозиция' },

@@ -801,6 +801,10 @@ button { font-family: inherit; touch-action: manipulation; }
   font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
   color: var(--text-dim); width: 16px; text-align: center; flex-shrink: 0;
 }
+/* Custom name field at the top of a stroke's open body — same row shape as
+   .color-row, but with a classic sunken text field instead of a swatch. */
+.op-rename-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--text-dim); margin-bottom: 8px; }
+.op-rename-input { flex: 1; min-width: 0; padding: 3px 6px; font-size: 11.5px; color: var(--text); }
 
 /* ============ CONTROLS ============ */
 .select {
@@ -888,7 +892,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 /* text/number inputs, selects — classic sunken edit fields */
-.np-input, .np-num input, .select, .group-select, .seed-row input[type='number'] {
+.np-input, .np-num input, .select, .group-select, .seed-row input[type='number'], .op-rename-input {
   border-top: 1px solid var(--xp-shadow-dark);
   border-left: 1px solid var(--xp-shadow-dark);
   border-right: 1px solid var(--xp-white);
