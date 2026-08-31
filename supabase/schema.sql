@@ -7,10 +7,18 @@
 -- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
-  display_name text not null,
+  display_name text not null check (char_length(display_name) <= 32),
   avatar_url text,
   created_at timestamptz not null default now()
 );
+
+-- `create table if not exists` above is a no-op on a database that already
+-- has `profiles`, so (re)apply the length constraint explicitly too. This
+-- mirrors the client-side `maxLength={32}` on the display name field
+-- (ProfileForm.tsx) — the client limit alone doesn't stop a direct REST
+-- call with a valid JWT, so it's enforced here as well.
+alter table public.profiles drop constraint if exists profiles_display_name_length;
+alter table public.profiles add constraint profiles_display_name_length check (char_length(display_name) <= 32);
 
 alter table public.profiles enable row level security;
 
@@ -38,7 +46,7 @@ create policy "users can update their own profile"
 create table if not exists public.posts (
   id uuid primary key default gen_random_uuid(),
   author_id uuid not null references public.profiles (id) on delete cascade,
-  title text not null,
+  title text not null check (char_length(title) <= 80),
   image_url text,
   preset_data jsonb,
   created_at timestamptz not null default now()
@@ -48,6 +56,12 @@ create table if not exists public.posts (
 -- has `posts` from before these columns existed, so add them explicitly too.
 alter table public.posts add column if not exists image_url text;
 alter table public.posts add column if not exists preset_data jsonb;
+
+-- Same idea as the columns above: mirrors the client-side `maxLength={80}`
+-- on the title field (PublishModal.tsx / EditPostModal.tsx), enforced here
+-- too since a direct REST call with a valid JWT bypasses client checks.
+alter table public.posts drop constraint if exists posts_title_length;
+alter table public.posts add constraint posts_title_length check (char_length(title) <= 80);
 
 create index if not exists posts_author_id_idx on public.posts (author_id);
 create index if not exists posts_created_at_idx on public.posts (created_at desc);
@@ -143,9 +157,15 @@ create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references public.posts (id) on delete cascade,
   author_id uuid not null references public.profiles (id) on delete cascade,
-  body text not null,
+  body text not null check (char_length(body) <= 300),
   created_at timestamptz not null default now()
 );
+
+-- Mirrors the client-side `maxLength={300}` on the comment composer
+-- (PostModal.tsx), enforced here too since a direct REST call with a valid
+-- JWT bypasses client checks.
+alter table public.comments drop constraint if exists comments_body_length;
+alter table public.comments add constraint comments_body_length check (char_length(body) <= 300);
 
 -- `create table if not exists` above is a no-op on a database that already
 -- has `comments` from before `parent_id` existed, so add it explicitly too.

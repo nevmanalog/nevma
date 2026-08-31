@@ -4,6 +4,7 @@ import { useAuth } from '@/state/auth'
 import { useFloatingWindow } from './useFloatingWindow'
 import { Community } from '@/pages/Community'
 import { Profile } from '@/pages/Profile'
+import { useT } from '@/i18n'
 import logoUrl from '@/assets/nevma-logo.png'
 
 const RESIZE_DIRS = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'] as const
@@ -36,6 +37,7 @@ export function Desktop() {
   const navigate = useRoute((s) => s.navigate)
   const openProfile = useRoute((s) => s.openProfile)
   const userId = useAuth((s) => s.user?.id)
+  const t = useT()
 
   const desktopRef = useRef<HTMLDivElement>(null)
 
@@ -48,12 +50,12 @@ export function Desktop() {
         </button>
         <button className="desktop-icon" onClick={() => navigate('community')}>
           <span className="desktop-icon-glyph">🌐</span>
-          <span className="desktop-icon-label">Сообщество</span>
+          <span className="desktop-icon-label">{t('communityTitle')}</span>
         </button>
         {userId && (
           <button className="desktop-icon" onClick={() => openProfile(userId)}>
             <span className="desktop-icon-glyph">👤</span>
-            <span className="desktop-icon-label">Профиль</span>
+            <span className="desktop-icon-label">{t('profileTitle')}</span>
           </button>
         )}
       </div>
