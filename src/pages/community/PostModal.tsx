@@ -41,7 +41,7 @@ function AuthorBadge({ role }: { role: 'user' | 'admin' }) {
 
 function Avatar({ url, name, className }: { url: string | null; name: string; className: string }) {
   return url
-    ? <img className={className} crossOrigin="anonymous" src={url} alt="" />
+    ? <img className={className} crossOrigin="anonymous" loading="lazy" decoding="async" src={url} alt="" />
     : <div className={`${className} post-modal-avatar-fallback`}>{name[0]?.toUpperCase()}</div>
 }
 
@@ -248,9 +248,20 @@ export function PostModal({
     <div className="welcome-overlay post-modal-overlay" onClick={onClose}>
       <div className="post-modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="post-modal-media sunk-in">
-          {post.previewUrl
-            ? <img className="post-modal-media-img" crossOrigin="anonymous" src={post.previewUrl} alt="" />
-            : <span className="post-modal-media-placeholder">🖼</span>}
+          {post.previewUrl ? (
+            <a
+              className="post-modal-media-link"
+              href={post.fullUrl ?? post.previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t('postViewFullSize')}
+            >
+              <img className="post-modal-media-img" crossOrigin="anonymous" src={post.previewUrl} alt="" />
+              <span className="post-modal-media-expand" aria-hidden="true">⤢</span>
+            </a>
+          ) : (
+            <span className="post-modal-media-placeholder">🖼</span>
+          )}
         </div>
 
         <div className="post-modal-sidebar">

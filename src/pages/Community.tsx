@@ -208,7 +208,7 @@ export function Community() {
                   onClick={() => hasProfile && openPostRoute((post as CommunityPost).id)}
                 >
                   {post.previewUrl
-                    ? <img className="feed-card-preview-img" crossOrigin="anonymous" src={post.previewUrl} alt="" />
+                    ? <img className="feed-card-preview-img" crossOrigin="anonymous" loading="lazy" decoding="async" src={post.previewUrl} alt="" />
                     : '🖼'}
                 </button>
                 <div className="feed-card-body">

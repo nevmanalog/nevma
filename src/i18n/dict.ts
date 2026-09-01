@@ -829,6 +829,7 @@ export const DICT = {
   postDeleteConfirm: { en: 'Delete this post? This cannot be undone.', ru: 'Удалить этот пост? Это действие нельзя отменить.' },
   adminBadge: { en: 'Dev', ru: 'Разработчик' },
   adminBadgeHint: { en: 'Site admin / developer', ru: 'Администратор / разработчик сайта' },
+  postViewFullSize: { en: 'Open full resolution', ru: 'Открыть в полном разрешении' },
   toastPostDeleted: { en: 'Post deleted.', ru: 'Пост удалён.' },
 
   // publish modal

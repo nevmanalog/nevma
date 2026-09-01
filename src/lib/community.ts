@@ -28,6 +28,10 @@ export interface CommunityPost {
   authorRole: 'user' | 'admin'
   title: string
   previewUrl: string | null
+  /** Full-resolution original — only loaded when someone clicks "open full
+   *  resolution" (see PostModal.tsx). Falls back to previewUrl for posts
+   *  published before this existed (see admin_role_migration.sql). */
+  fullUrl: string | null
   createdAt: string
   likeCount: number
   commentCount: number
@@ -126,12 +130,13 @@ export async function unfollow(followerId: string, targetId: string): Promise<vo
 // without it, a project with more than one FK between `posts`/`comments`
 // and `profiles` (e.g. one added by hand in the Supabase table editor on
 // top of this script) makes the embed ambiguous and the whole query fails.
-const POST_SELECT = 'id, title, image_url, preset_data, created_at, author_id, profiles!author_id ( display_name, avatar_url, role ), likes(count), comments(count)'
+const POST_SELECT = 'id, title, image_url, full_image_url, preset_data, created_at, author_id, profiles!author_id ( display_name, avatar_url, role ), likes(count), comments(count)'
 
 interface PostRow {
   id: string
   title: string
   image_url: string | null
+  full_image_url: string | null
   preset_data: PostPresetData | null
   created_at: string
   author_id: string
@@ -149,6 +154,7 @@ function mapPost(row: PostRow): CommunityPost {
     authorRole: row.profiles?.role ?? 'user',
     title: row.title,
     previewUrl: row.image_url,
+    fullUrl: row.full_image_url ?? row.image_url,
     createdAt: row.created_at,
     likeCount: row.likes?.[0]?.count ?? 0,
     commentCount: row.comments?.[0]?.count ?? 0,
@@ -362,20 +368,73 @@ export async function fetchMyCommentReaction(commentId: string, userId: string):
 const POSTS_BUCKET = 'posts'
 
 /**
- * Uploads the rendered composition to the `posts` bucket and returns its
- * public URL. Path is `${userId}/${newId()}.png` — same per-user-folder
- * convention as uploadAvatar, which is what the storage RLS policies in
+ * Downscales+recompresses a rendered post image for anything that isn't the
+ * explicit "open full resolution" view: feed tiles, the profile grid, and
+ * the open-post display itself. The editor exports a lossless, full-working-
+ * resolution PNG (see engine/exportLayers.ts's renderFinalImage) which can
+ * run into several MB — fine as the one-time "view full size" download, way
+ * too much for something fetched on every scroll past a tile.
+ *
+ * Caps the longest side at 1600px (plenty for any screen this app renders
+ * the image on) and re-encodes as JPEG at 0.85 quality. Falls back to the
+ * original blob if canvas decoding fails for any reason (e.g. an
+ * unsupported format) rather than blocking the publish.
+ */
+async function createDisplayImage(source: Blob, maxDim = 1600, quality = 0.85): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(source)
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
+    const w = Math.max(1, Math.round(bitmap.width * scale))
+    const h = Math.max(1, Math.round(bitmap.height * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return source
+    // JPEG has no alpha channel — flatten onto white first so transparent
+    // areas (e.g. a paper edge that hasn't been fully cropped) don't turn
+    // black, which is JPEG's default for "no pixel data" instead of white.
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, w, h)
+    ctx.drawImage(bitmap, 0, 0, w, h)
+    bitmap.close()
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+    return blob ?? source
+  } catch (err) {
+    console.error('[community] createDisplayImage failed, uploading original instead:', err)
+    return source
+  }
+}
+
+/**
+ * Uploads both the compressed display image and the full-resolution
+ * original to the `posts` bucket and returns both public URLs. Path is
+ * `${userId}/${newId()}.<ext>` — same per-user-folder convention as
+ * uploadAvatar, which is what the storage RLS policies in
  * supabase/schema.sql key off.
  */
-export async function uploadPostImage(userId: string, image: Blob): Promise<string> {
+export async function uploadPostImage(userId: string, image: Blob): Promise<{ displayUrl: string; fullUrl: string }> {
   if (!supabase) throw new Error('Supabase is not configured')
-  const path = `${userId}/${newId()}.png`
-  const { error: uploadError } = await supabase.storage
+  const id = newId()
+  const displayImage = await createDisplayImage(image)
+  const fullPath = `${userId}/${id}.png`
+  const displayPath = displayImage === image ? fullPath : `${userId}/${id}_display.jpg`
+
+  const { error: fullError } = await supabase.storage
     .from(POSTS_BUCKET)
-    .upload(path, image, { contentType: 'image/png', cacheControl: '31536000' })
-  if (uploadError) throw uploadError
-  const { data } = supabase.storage.from(POSTS_BUCKET).getPublicUrl(path)
-  return data.publicUrl
+    .upload(fullPath, image, { contentType: 'image/png', cacheControl: '31536000' })
+  if (fullError) throw fullError
+  const fullUrl = supabase.storage.from(POSTS_BUCKET).getPublicUrl(fullPath).data.publicUrl
+
+  if (displayPath === fullPath) return { displayUrl: fullUrl, fullUrl }
+
+  const { error: displayError } = await supabase.storage
+    .from(POSTS_BUCKET)
+    .upload(displayPath, displayImage, { contentType: 'image/jpeg', cacheControl: '31536000' })
+  if (displayError) throw displayError
+  const displayUrl = supabase.storage.from(POSTS_BUCKET).getPublicUrl(displayPath).data.publicUrl
+
+  return { displayUrl, fullUrl }
 }
 
 /**
@@ -392,10 +451,15 @@ export async function createPost(
   authorId: string, title: string, image?: Blob | null, presetData?: PostPresetData | null,
 ): Promise<void> {
   if (!supabase) return
-  const imageUrl = image ? await uploadPostImage(authorId, image) : null
+  const uploaded = image ? await uploadPostImage(authorId, image) : null
   const { error } = await supabase
     .from('posts')
-    .insert({ author_id: authorId, title, image_url: imageUrl, preset_data: presetData ?? null })
+    .insert({
+      author_id: authorId, title,
+      image_url: uploaded?.displayUrl ?? null,
+      full_image_url: uploaded?.fullUrl ?? null,
+      preset_data: presetData ?? null,
+    })
   if (error) throw error
 }
 

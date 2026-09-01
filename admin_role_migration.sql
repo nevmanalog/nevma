@@ -51,8 +51,20 @@ create policy "users can delete their own comments"
   using (auth.uid() = author_id or public.is_admin());
 
 -- ---------------------------------------------------------------------------
--- After running this, make yourself an admin by UUID (grab it from
--- Authentication -> Users in the Supabase dashboard, or run:
+-- posts.full_image_url: the original, uncompressed render — only fetched
+-- when someone explicitly opens "view full resolution" (see
+-- lib/community.ts's uploadPostImage / PostModal.tsx's post-modal-media-link).
+-- posts.image_url keeps being the compressed, downscaled version everyone
+-- actually downloads by default (feed tiles, profile grid, the open post).
+-- Existing rows fall back to their own image_url until republished, both in
+-- this column and in the app (lib/community.ts's mapPost).
+-- ---------------------------------------------------------------------------
+alter table public.posts add column if not exists full_image_url text;
+update public.posts set full_image_url = image_url where full_image_url is null and image_url is not null;
+
+-- ---------------------------------------------------------------------------
+-- After running everything above, make yourself an admin by UUID (grab it
+-- from Authentication -> Users in the Supabase dashboard, or run:
 --   select id, display_name from public.profiles;
 -- to find yourself by display_name):
 --

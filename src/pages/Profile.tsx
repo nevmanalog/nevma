@@ -231,7 +231,7 @@ export function Profile() {
                       onClick={() => setOpenPostId(post.id)}
                     >
                       {post.previewUrl
-                        ? <img className="profile-post-tile-img" crossOrigin="anonymous" src={post.previewUrl} alt="" />
+                        ? <img className="profile-post-tile-img" crossOrigin="anonymous" loading="lazy" decoding="async" src={post.previewUrl} alt="" />
                         : '🖼'}
                       {(isOwnProfile || isAdmin) && (
                         <div className="profile-post-tile-actions" onClick={(e) => e.stopPropagation()}>
