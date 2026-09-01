@@ -356,6 +356,7 @@ export const DICT = {
   lblColorMode: { en: 'Colour mode', ru: 'Режим цвета' },
   lblPaperType: { en: 'Paper type', ru: 'Тип бумаги' },
   lblPrinterType: { en: 'Printer type', ru: 'Тип принтера' },
+  typeSelectHoverHint: { en: 'Hover an option to preview it', ru: 'Наведите на вариант, чтобы увидеть превью' },
   hColorMode: { en: 'How the image colour is presented: full colour, black & white or tint.', ru: 'Как показан цвет: полноцветно, чёрно-белое или тонирование.' },
   hPaperType: { en: 'Paper stock preset — sets base tint and fibre character.', ru: 'Тип бумаги — задаёт базовый оттенок и характер волокон.' },
   hPaperColor: { en: 'Base colour of the paper stock (white = unchanged).', ru: 'Базовый цвет бумаги (белый — без изменений).' },

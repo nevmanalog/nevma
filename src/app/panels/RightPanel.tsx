@@ -1,11 +1,12 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { useStore, sheetOps } from '@/state/store'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { useStore, sheetOps, sourceBitmaps } from '@/state/store'
 import { useUi } from '@/state/ui'
 import {
   PAPER_SCHEMA, PRINTER_SCHEMA, SCANNER_SCHEMA,
   PAPER_TYPES, PRINTER_TYPES, COLOR_MODES, PREPRESS_MODES, SCANNER_MODES,
 } from '@/domain/params'
-import type { PaperType, PrinterType, ParamSchema } from '@/domain/params'
+import type { ParamSchema } from '@/domain/params'
 import type { ColorMode, PrepressMode, ScannerMode, EngineId, EdgeStyle, PhysicalToolId, SheetOp, Layer } from '@/domain/types'
 import { useT } from '@/i18n'
 import type { TKey } from '@/i18n/dict'
@@ -23,6 +24,8 @@ import { mergeParameters } from '@/engine/tools/core/parameters'
 import { FINAL_ADJUSTMENTS, normalizeFinal } from '@/engine/final/registry'
 import type { FinalAdjustment, FinalControlSpec } from '@/engine/final/contracts'
 import { loadImageFile } from '@/shared/loadImage'
+import { bakeBase } from '@/engine/gl/bakeAsync'
+import type { LayerEffects } from '@/domain/types'
 
 // Curated per-section slider subsets so each control appears in exactly one place.
 const pick = (schema: ParamSchema, keys: readonly string[]): ParamSchema =>
@@ -31,6 +34,158 @@ const PAPER_MAIN = ['yellowing', 'fibers', 'roughness', 'thickness', 'stains'] a
 const PRINTER_MAIN = ['dpi', 'halftone', 'colorShift', 'registration'] as const
 const PRINTER_INK = ['inkDensity', 'dotGain', 'fade'] as const
 const SCANNER_MAIN = ['exposure', 'blur', 'streaks', 'distortion', 'colorProblems'] as const
+
+// ---------------------------------------------------------------------------
+// Type dropdowns with a hover preview (paper type / printer type). A native
+// <select>'s <option> elements render in an OS-level popup in most browsers,
+// so they can't be hovered from JS — hence a from-scratch dropdown here
+// instead of just adding a hover handler to the old <select>.
+// ---------------------------------------------------------------------------
+
+const PREVIEW_BOX = 220 // longest side, px — plenty to tell papers/printers
+                         // apart at a glance, small enough to bake near-instantly
+
+/** Renders the layer's current material with one field (paperType or
+ *  printerType) swapped, at a small size — same "printed base" bake used
+ *  everywhere else (see engine/bake.ts), just downscaled and only reached
+ *  through the worker queue (bakeBase/bakeMaterialAsync) so a hover preview
+ *  can never contend with the singleton main-thread WebGL renderer that live
+ *  strokes use. Returns null if the layer has no source loaded yet. */
+async function bakeTypePreview(
+  activeId: string, effects: LayerEffects, seed: number, width: number, height: number,
+): Promise<string | null> {
+  const src = sourceBitmaps.get(activeId)
+  if (!src || width <= 0 || height <= 0) return null
+  const scale = Math.min(1, PREVIEW_BOX / Math.max(width, height))
+  const w = Math.max(1, Math.round(width * scale))
+  const h = Math.max(1, Math.round(height * scale))
+  try {
+    const canvas = await bakeBase({ source: src, width: w, height: h, effects, seed })
+    return canvas.toDataURL()
+  } catch (err) {
+    console.error('[RightPanel] type preview bake failed:', err)
+    return null
+  }
+}
+
+function TypeSelect<T extends string>({
+  value, options, onChange, getPreview, disabled,
+}: {
+  value: T
+  options: { id: T; labelKey: TKey }[]
+  onChange: (v: T) => void
+  /** Bakes the preview for one option. The caller is expected to hand back a
+   *  fresh closure whenever the layer's actual look changes (a new
+   *  `activeId`/effects/seed) — see `PrintSettings` below — so this
+   *  component's own per-option cache (`previews`) naturally goes stale
+   *  along with it, just by virtue of being local state on a component
+   *  whose key includes the layer id. */
+  getPreview: (id: T) => Promise<string | null>
+  disabled?: boolean
+}) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const [hoverId, setHoverId] = useState<T | null>(null)
+  const [previews, setPreviews] = useState<Partial<Record<T, string>>>({})
+  const [inFlight] = useState(() => new Set<T>())
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({ visibility: 'hidden' })
+
+  // Positions the portal'd menu against the trigger button in viewport
+  // (`position: fixed`) coordinates — same reasoning and approach as
+  // HelpButton's popover above: this control lives inside `.panel`, which
+  // scrolls (`overflow-y: auto`), so an absolutely-positioned menu would get
+  // clipped by that ancestor instead of floating over the whole app.
+  useLayoutEffect(() => {
+    if (!open) return
+    const place = () => {
+      const trigger = triggerRef.current?.getBoundingClientRect()
+      const menu = menuRef.current
+      if (!trigger || !menu) return
+      const margin = 8
+      const gap = 4
+      const width = Math.min(360, window.innerWidth - margin * 2)
+      const height = Math.min(menu.scrollHeight, window.innerHeight - margin * 2)
+      const left = Math.min(window.innerWidth - width - margin, Math.max(margin, trigger.left))
+      const fitsBelow = trigger.bottom + gap + height <= window.innerHeight - margin
+      const top = fitsBelow ? trigger.bottom + gap : Math.max(margin, trigger.top - gap - height)
+      setMenuStyle({ left, top, width, maxHeight: window.innerHeight - margin * 2, visibility: 'visible' })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const close = (ev: MouseEvent) => {
+      if (triggerRef.current?.contains(ev.target as Node)) return
+      if (menuRef.current?.contains(ev.target as Node)) return
+      setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  // Closing the dropdown drops the hover state so a stale preview panel
+  // can't flash open on next hover of a different control.
+  useEffect(() => { if (!open) setHoverId(null) }, [open])
+
+  const handleHover = (id: T) => {
+    setHoverId(id)
+    if (previews[id] !== undefined || inFlight.has(id)) return
+    inFlight.add(id)
+    getPreview(id).then((url) => {
+      inFlight.delete(id)
+      if (url) setPreviews((p) => ({ ...p, [id]: url }))
+    })
+  }
+
+  const activeLabel = options.find((o) => o.id === value)?.labelKey
+  const previewUrl = hoverId ? previews[hoverId] : undefined
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="select type-select-trigger"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{activeLabel ? t(activeLabel) : value}</span>
+        <span className="type-select-caret">{open ? '▴' : '▾'}</span>
+      </button>
+      {open && createPortal(
+        <div ref={menuRef} className="type-select-menu" style={menuStyle}>
+          <div className="type-select-options">
+            {options.map((opt) => (
+              <div
+                key={opt.id}
+                className={`type-select-option ${opt.id === value ? 'active' : ''}`}
+                onMouseEnter={() => handleHover(opt.id)}
+                onClick={() => { onChange(opt.id); setOpen(false) }}
+              >
+                {t(opt.labelKey)}
+              </div>
+            ))}
+          </div>
+          <div className="type-select-preview">
+            {hoverId && previewUrl && <img src={previewUrl} alt="" />}
+            {hoverId && previewUrl === undefined && <div className="type-select-preview-loading">…</div>}
+            {!hoverId && <div className="type-select-preview-hint">{t('typeSelectHoverHint')}</div>}
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
+  )
+}
 
 const EDGE_STYLES: { id: EdgeStyle; key: TKey }[] = [
   { id: 'scissors', key: 'edgeScissors' },
@@ -123,6 +278,10 @@ type SectionProps = { activeId: string; openId: string | null; setOpenId: (v: st
 
 function PrintSettings({ activeId, openId, setOpenId }: SectionProps) {
   const e = useStore((s) => s.layers[activeId].effects)
+  const width = useStore((s) => s.layers[activeId].width)
+  const height = useStore((s) => s.layers[activeId].height)
+  const seed = useStore((s) => s.layers[activeId].seed)
+  const bakeToken = useStore((s) => s.bakeToken[activeId])
   const updatePaper = useStore((s) => s.updatePaper)
   const updatePrinter = useStore((s) => s.updatePrinter)
   const setPaperType = useStore((s) => s.setPaperType)
@@ -137,9 +296,13 @@ function PrintSettings({ activeId, openId, setOpenId }: SectionProps) {
         <EngineToggle activeId={activeId} engine="paper" />
         {eng.paper && <>
           <OptHead labelKey="lblPaperType" helpKey="hPaperType" paramKey="sel.paperType" />
-          <select className="select" value={e.paperType} onChange={(ev) => setPaperType(activeId, ev.target.value as PaperType)}>
-            {PAPER_TYPES.map((pt) => <option key={pt.id} value={pt.id}>{t(pt.labelKey)}</option>)}
-          </select>
+          <TypeSelect
+            key={`${activeId}-paper-${bakeToken}`}
+            value={e.paperType}
+            options={PAPER_TYPES}
+            onChange={(v) => setPaperType(activeId, v)}
+            getPreview={(paperType) => bakeTypePreview(activeId, { ...e, paperType }, seed, width, height)}
+          />
           <label className="color-row"><span className="lbl">{t('paperColor')}<HelpButton paramKey="sel.paperColor" helpKey="hPaperColor" /></span>
             <input type="color" value={e.paperColor} onChange={(ev) => setPaperColor(activeId, ev.target.value)} />
           </label>
@@ -154,9 +317,13 @@ function PrintSettings({ activeId, openId, setOpenId }: SectionProps) {
             {PREPRESS_MODES.map((pm) => <option key={pm.id} value={pm.id}>{t(pm.labelKey)}</option>)}
           </select>
           <OptHead labelKey="lblPrinterType" helpKey="hPrinterType" paramKey="sel.printerType" />
-          <select className="select" value={e.printerType} onChange={(ev) => setPrinterType(activeId, ev.target.value as PrinterType)}>
-            {PRINTER_TYPES.map((pt) => <option key={pt.id} value={pt.id}>{t(pt.labelKey)}</option>)}
-          </select>
+          <TypeSelect
+            key={`${activeId}-printer-${bakeToken}`}
+            value={e.printerType}
+            options={PRINTER_TYPES}
+            onChange={(v) => setPrinterType(activeId, v)}
+            getPreview={(printerType) => bakeTypePreview(activeId, { ...e, printerType }, seed, width, height)}
+          />
           <Sliders schema={pick(PRINTER_SCHEMA, PRINTER_MAIN)} values={e.printer} onChange={(p) => updatePrinter(activeId, p)} prefix="printer" />
         </>}
       </Acc>
