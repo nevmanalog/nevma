@@ -139,6 +139,18 @@ export function LayersPanel() {
     setSelected(new Set())
   }
 
+  // "+ New group": if any layers are ticked via the merge checkboxes, drop
+  // them straight into the freshly created group instead of leaving it empty
+  // and making the person drag each one over or use the per-row group
+  // dropdown one at a time.
+  const onCreateGroup = () => {
+    const gid = createGroup()
+    if (selected.size > 0) {
+      selected.forEach((id) => setLayerGroup(id, gid))
+      setSelected(new Set())
+    }
+  }
+
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
   // Touch has no native drag-and-drop, so the drag handle tracks the finger
@@ -215,7 +227,7 @@ export function LayersPanel() {
         <span className="panel-title">{t('layers')}</span>
         <div className="panel-head-actions">
           <button className="ghost-btn" onClick={addBlankLayer}>＋ {t('newLayer')}</button>
-          <button className="ghost-btn" onClick={createGroup}>＋ {t('newGroup')}</button>
+          <button className="ghost-btn" onClick={onCreateGroup}>＋ {t('newGroup')}</button>
         </div>
       </div>
 

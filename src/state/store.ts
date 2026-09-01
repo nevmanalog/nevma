@@ -141,7 +141,7 @@ interface AppState {
    *  still in the stack, still editable — this only adds a layer, it never
    *  removes or hides one. */
   mergeLayers: (ids: string[]) => void
-  createGroup: () => void
+  createGroup: () => string
   renameGroup: (gid: string, name: string) => void
   deleteGroup: (gid: string) => void
   toggleGroupCollapsed: (gid: string) => void
@@ -938,9 +938,14 @@ export const useStore = create<AppState>((set, get) => {
 
     // Groups are organisational only (left panel) — they never touch the render
     // pipeline, so they live outside the undo history like `collapsed`.
+    // Returns the new group's id so a caller (LayersPanel's "+ New group"
+    // button) can immediately drop the current checkbox selection into it —
+    // see the note on `layerGroups` for why membership itself also skips
+    // undo history.
     createGroup: () => {
       const g: LayerGroup = { id: newId(), name: `Group ${get().groups.length + 1}`, collapsed: false }
       set((s) => ({ groups: [...s.groups, g] }))
+      return g.id
     },
     renameGroup: (gid, name) => {
       set((s) => ({ groups: s.groups.map((g) => (g.id === gid ? { ...g, name } : g)) }))
