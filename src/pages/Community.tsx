@@ -278,19 +278,21 @@ export function Community() {
                     by {author}
                   </button>
                   <div className="feed-card-actions">
-                    <button
-                      className={`ig-action-btn${hasProfile && likedIds.has((post as CommunityPost).id) ? ' ig-action-btn-active' : ''}`}
-                      onClick={() => hasProfile ? toggleLike(post as CommunityPost) : requireAuth(() => {})}
-                    >
-                      ♥ {likeCount}
-                    </button>
-                    <button
-                      className="ig-action-btn"
-                      onClick={() => hasProfile ? openPostRoute((post as CommunityPost).id) : requireAuth(() => {})}
-                    >
-                      💬 {commentCount}
-                    </button>
-                    {hasProfile && <DownloadProjectButton post={post as CommunityPost} className="feed-card-download-btn" />}
+                    <div className="feed-card-actions-row">
+                      <button
+                        className={`ig-action-btn${hasProfile && likedIds.has((post as CommunityPost).id) ? ' ig-action-btn-active' : ''}`}
+                        onClick={() => hasProfile ? toggleLike(post as CommunityPost) : requireAuth(() => {})}
+                      >
+                        ♥ {likeCount}
+                      </button>
+                      <button
+                        className="ig-action-btn"
+                        onClick={() => hasProfile ? openPostRoute((post as CommunityPost).id) : requireAuth(() => {})}
+                      >
+                        💬 {commentCount}
+                      </button>
+                      {hasProfile && <DownloadProjectButton post={post as CommunityPost} className="feed-card-download-btn" />}
+                    </div>
                     {hasProfile && <PostPresetChip post={post as CommunityPost} className="feed-card-preset-chip" />}
                   </div>
                 </div>

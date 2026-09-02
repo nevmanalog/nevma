@@ -1613,10 +1613,12 @@ input[type='range']::-moz-range-thumb {
 }
 .feed-card-author:hover { color: var(--text); text-decoration: underline; }
 .feed-card-author:disabled { cursor: default; }
-.feed-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; row-gap: 6px; }
+.feed-card-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.feed-card-actions-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.feed-card-actions-row .ig-action-btn { min-width: 38px; height: 30px; padding: 0 8px; }
 .feed-card-download-btn { flex-shrink: 0; }
 .feed-card-download-btn .action-btn-label { display: none; }
-.feed-card-preset-chip { margin: 0 0 0 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.feed-card-preset-chip { margin: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
 /* ===================== Status bar (bottom of every window) ===================== */
 .app-status-bar {

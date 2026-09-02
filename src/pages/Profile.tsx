@@ -255,8 +255,10 @@ export function Profile() {
                     </div>
                     <p className="profile-post-title">{post.title}</p>
                     <div className="feed-card-actions">
-                      <span className="ig-action-btn">♥ {post.likeCount}</span>
-                      <span className="ig-action-btn">💬 {post.commentCount}</span>
+                      <div className="feed-card-actions-row">
+                        <span className="ig-action-btn">♥ {post.likeCount}</span>
+                        <span className="ig-action-btn">💬 {post.commentCount}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
