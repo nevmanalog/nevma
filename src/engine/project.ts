@@ -101,8 +101,24 @@ function bitmapToCanvas(bmp: Bitmap): HTMLCanvasElement {
   return c
 }
 
-function bitmapToDataURL(bmp: Bitmap): string {
-  return bitmapToCanvas(bmp).toDataURL('image/png')
+// `canvas.toDataURL()` encodes PNG synchronously on the main thread and
+// blocks until it's done — for a project with several full-resolution
+// layers (and cut layers doubling up with a source + mask each) that adds
+// up to a very visible freeze on save/publish. `canvas.toBlob()` does the
+// same PNG encode off the main thread in every browser that matters here,
+// so encoding several bitmaps concurrently via Promise.all below no longer
+// stalls the UI. We still end up with a data URL (so the rest of the file
+// format / the `images` map doesn't change), just built asynchronously.
+function bitmapToDataURL(bmp: Bitmap): Promise<string> {
+  return new Promise((resolve, reject) => {
+    bitmapToCanvas(bmp).toBlob((blob) => {
+      if (!blob) { reject(new Error('Failed to encode project bitmap')); return }
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(new Error('Failed to read encoded project bitmap'))
+      reader.readAsDataURL(blob)
+    }, 'image/png')
+  })
 }
 
 function dataURLToCanvas(url: string): Promise<HTMLCanvasElement> {
@@ -124,8 +140,11 @@ function dataURLToCanvas(url: string): Promise<HTMLCanvasElement> {
 // Save
 // ---------------------------------------------------------------------------
 
-export function serializeProject(): ProjectFile {
-  const images: Record<string, string> = {}
+export async function serializeProject(): Promise<ProjectFile> {
+  // Assigning keys is just Map bookkeeping — cheap and synchronous. The
+  // actual (expensive) PNG encode is deferred to a single Promise.all pass
+  // below, over only the unique bitmaps, so it runs off the main thread
+  // and concurrently instead of blocking once per bitmap as they're found.
   const bmpKeys = new Map<Bitmap, string>()
   let bmpN = 0
   const keyForBitmap = (bmp: Bitmap): string => {
@@ -133,7 +152,6 @@ export function serializeProject(): ProjectFile {
     if (existing) return existing
     const key = `b${bmpN++}`
     bmpKeys.set(bmp, key)
-    images[key] = bitmapToDataURL(bmp)
     return key
   }
 
@@ -198,6 +216,14 @@ export function serializeProject(): ProjectFile {
   // rewind to the user's original position
   while (useStore.getState().history.past.length > startPos) useStore.getState().undo()
 
+  // Encode every unique bitmap concurrently now that we know the full set —
+  // one Promise.all pass instead of N sequential main-thread stalls.
+  const images = Object.fromEntries(
+    await Promise.all(
+      [...bmpKeys].map(async ([bmp, key]) => [key, await bitmapToDataURL(bmp)] as const),
+    ),
+  )
+
   const ui = useUi.getState()
   return {
     format: FORMAT,
@@ -227,8 +253,8 @@ export function serializeProject(): ProjectFile {
   }
 }
 
-export function saveProject(): void {
-  const project = serializeProject()
+export async function saveProject(): Promise<void> {
+  const project = await serializeProject()
   const name = (project.doc?.name || 'project').replace(/[^\w.-]+/g, '_')
   const blob = new Blob([JSON.stringify(project)], { type: 'application/json' })
   triggerDownload(blob, `${name}.nevma`)
@@ -376,8 +402,7 @@ export interface PostProjectSnapshot {
   snapshot: Snapshot
 }
 
-export function serializePostProjectSnapshot(): PostProjectSnapshot {
-  const images: Record<string, string> = {}
+export async function serializePostProjectSnapshot(): Promise<PostProjectSnapshot> {
   const bmpKeys = new Map<Bitmap, string>()
   let bmpN = 0
   const keyForBitmap = (bmp: Bitmap): string => {
@@ -385,7 +410,6 @@ export function serializePostProjectSnapshot(): PostProjectSnapshot {
     if (existing) return existing
     const key = `b${bmpN++}`
     bmpKeys.set(bmp, key)
-    images[key] = bitmapToDataURL(bmp)
     return key
   }
   const ops: Record<string, SheetOp> = {}
@@ -421,6 +445,12 @@ export function serializePostProjectSnapshot(): PostProjectSnapshot {
     const list = sheetOps.get(id)
     if (list && list.length) opsRefs[id] = list.map(keyForOp)
   }
+
+  const images = Object.fromEntries(
+    await Promise.all(
+      [...bmpKeys].map(async ([bmp, key]) => [key, await bitmapToDataURL(bmp)] as const),
+    ),
+  )
 
   return {
     format: POST_SNAPSHOT_FORMAT,

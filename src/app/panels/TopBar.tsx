@@ -36,7 +36,7 @@ export function TopBar() {
   const onSave = async () => {
     if (saving) return
     setSaving(true)
-    try { saveProject() } finally { setSaving(false) }
+    try { await saveProject() } finally { setSaving(false) }
   }
 
   return (

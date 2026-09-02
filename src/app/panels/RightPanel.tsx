@@ -844,7 +844,7 @@ export function RightPanel() {
       // rather than in community.ts so this stays symmetric with publishBlob
       // above: RightPanel captures the editor-only data, community.ts just
       // uploads whatever it's handed.
-      setPublishProjectSnapshot(JSON.stringify(serializePostProjectSnapshot()))
+      setPublishProjectSnapshot(JSON.stringify(await serializePostProjectSnapshot()))
       setPublishOpen(true)
     } finally {
       setPreparingPublish(false)
