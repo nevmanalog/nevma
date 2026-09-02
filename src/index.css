@@ -1186,8 +1186,10 @@ input[type='range']::-moz-range-thumb {
 }
 .ig-post-preview:disabled { cursor: default; }
 .ig-post-preview-img { width: 100%; height: 100%; object-fit: cover; }
-.ig-post-actions { display: flex; gap: 6px; padding: 8px 10px 2px; }
+.ig-post-actions { display: flex; flex-wrap: wrap; gap: 6px; row-gap: 6px; padding: 8px 10px 2px; }
 .ig-action-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: 26px; white-space: nowrap;
   padding: 5px 10px; font-size: 12px; cursor: pointer; color: var(--text);
   background: var(--xp-face); border-radius: 0;
   border-top: 1px solid var(--xp-white); border-left: 1px solid var(--xp-white);
@@ -1611,8 +1613,10 @@ input[type='range']::-moz-range-thumb {
 }
 .feed-card-author:hover { color: var(--text); text-decoration: underline; }
 .feed-card-author:disabled { cursor: default; }
-.feed-card-actions { display: flex; align-items: center; gap: 4px; }
-.feed-card-preset-chip { margin-left: auto; }
+.feed-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; row-gap: 6px; }
+.feed-card-download-btn { flex-shrink: 0; }
+.feed-card-download-btn .action-btn-label { display: none; }
+.feed-card-preset-chip { margin: 0 0 0 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
 /* ===================== Status bar (bottom of every window) ===================== */
 .app-status-bar {

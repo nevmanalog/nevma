@@ -53,7 +53,7 @@ export function DownloadProjectButton({ post, className }: { post: CommunityPost
       disabled={loading}
       onClick={onClick}
     >
-      💾 {loading ? t('downloadingProject') : t('downloadProject')}
+      💾 <span className="action-btn-label">{loading ? t('downloadingProject') : t('downloadProject')}</span>
     </button>
   )
 }
