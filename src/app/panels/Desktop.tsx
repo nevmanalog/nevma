@@ -34,8 +34,10 @@ const CASCADE_STEP = 28
  *
  * The icons are always shown, regardless of which windows are open —
  * they're the permanent way back to any section, so they never hide
- * themselves just because that section is already open. When nothing is
- * open, the wallpaper shows the logo on its own instead of any window.
+ * themselves just because that section is already open. The NEVMA logo
+ * wallpaper stays visible underneath at all times too, the same way a
+ * real desktop's wallpaper stays put behind whatever windows are open on
+ * top of it — it doesn't disappear just because a window was opened.
  */
 export function Desktop() {
   const openWindows = useRoute((s) => s.openWindows)
@@ -64,13 +66,10 @@ export function Desktop() {
           </button>
         )}
       </div>
-      {openWindows.length > 0 ? (
-        openWindows.map((kind, i) => (
-          <FloatingWindow key={kind} kind={kind} order={i} desktopRef={desktopRef} />
-        ))
-      ) : (
-        <img className="desktop-wallpaper-logo" src={logoUrl} alt="Nevma" />
-      )}
+      <img className="desktop-wallpaper-logo" src={logoUrl} alt="Nevma" />
+      {openWindows.map((kind, i) => (
+        <FloatingWindow key={kind} kind={kind} order={i} desktopRef={desktopRef} />
+      ))}
     </div>
   )
 }

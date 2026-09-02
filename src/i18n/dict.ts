@@ -817,6 +817,13 @@ export const DICT = {
   save: { en: 'Save', ru: 'Сохранить' },
   loading: { en: 'Loading…', ru: 'Загрузка…' },
 
+  // boot screen status lines (one is picked at random and held)
+  bootStatus1: { en: 'Warming up the printer...', ru: 'Прогреваем принтер...' },
+  bootStatus2: { en: 'Loading the film...', ru: 'Заряжаем плёнку...' },
+  bootStatus3: { en: 'Dusting off the scanner...', ru: 'Стряхиваем пыль со сканера...' },
+  bootStatus4: { en: 'Mixing the developer...', ru: 'Мешаем проявитель...' },
+  bootStatus5: { en: 'Sharpening the scissors...', ru: 'Точим ножницы...' },
+
   // profile page
   profileTitle: { en: 'Profile', ru: 'Профиль' },
   profilePosts: { en: 'posts', ru: 'постов' },

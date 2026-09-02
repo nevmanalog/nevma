@@ -1,17 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { useT, type TKey } from '@/i18n'
 
 const TOTAL_BLOCKS = 20
 const BLOCK_INTERVAL_MS = 90
 const HOLD_MS = 260
 const FADE_MS = 220
 
-const STATUSES = [
-  'Прогреваем принтер...',
-  'Заряжаем плёнку...',
-  'Стряхиваем пыль со сканера...',
-  'Мешаем проявитель...',
-  'Точим ножницы...',
-]
+const STATUS_KEYS: TKey[] = ['bootStatus1', 'bootStatus2', 'bootStatus3', 'bootStatus4', 'bootStatus5']
 
 /**
  * A Windows-98-style "boot" screen shown on every load, right at the
@@ -20,10 +15,11 @@ const STATUSES = [
  * and doesn't get old. Skips itself entirely under prefers-reduced-motion.
  */
 export function BootScreen() {
+  const t = useT()
   const [visible, setVisible] = useState(false)
   const [filled, setFilled] = useState(0)
   const [closing, setClosing] = useState(false)
-  const [statusText] = useState(() => STATUSES[Math.floor(Math.random() * STATUSES.length)])
+  const [statusKey] = useState<TKey>(() => STATUS_KEYS[Math.floor(Math.random() * STATUS_KEYS.length)])
   const doneRef = useRef(false)
 
   useEffect(() => {
@@ -68,7 +64,7 @@ export function BootScreen() {
             <span key={i} className={`boot-screen-block${i < filled ? ' boot-screen-block-on' : ''}`} />
           ))}
         </div>
-        <span className="boot-screen-status">{statusText}</span>
+        <span className="boot-screen-status">{t(statusKey)}</span>
       </div>
       <span className="boot-screen-footer">nevma corporation</span>
     </div>
