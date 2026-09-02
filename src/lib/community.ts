@@ -41,6 +41,16 @@ export interface CommunityPost {
    *  for posts published from the Community page's caption-only flow,
    *  which has no editor state to capture. */
   presetData: PostPresetData | null
+  /** URL of the full serialized project (layers, bitmaps, groups — see
+   *  engine/project.ts's serializePostProjectSnapshot), if one was captured
+   *  at publish time. Lets "Скачать проект"
+   *  (community/DownloadProjectButton.tsx) hand over a file the editor's
+   *  own "Открыть проект" can load back into a real, editable copy laid
+   *  out exactly like the author's original. Absent for posts published
+   *  before this existed and for the Community page's caption-only flow
+   *  (no editor state to capture) — DownloadProjectButton renders nothing
+   *  for those. */
+  projectUrl: string | null
 }
 
 export interface CommunityComment {
@@ -146,7 +156,7 @@ export async function fetchFollowingIds(userId: string): Promise<string[]> {
 // without it, a project with more than one FK between `posts`/`comments`
 // and `profiles` (e.g. one added by hand in the Supabase table editor on
 // top of this script) makes the embed ambiguous and the whole query fails.
-const POST_SELECT = 'id, title, image_url, full_image_url, preset_data, created_at, author_id, profiles!author_id ( display_name, avatar_url, role ), likes(count), comments(count)'
+const POST_SELECT = 'id, title, image_url, full_image_url, preset_data, project_url, created_at, author_id, profiles!author_id ( display_name, avatar_url, role ), likes(count), comments(count)'
 
 interface PostRow {
   id: string
@@ -154,6 +164,7 @@ interface PostRow {
   image_url: string | null
   full_image_url: string | null
   preset_data: PostPresetData | null
+  project_url: string | null
   created_at: string
   author_id: string
   profiles: { display_name: string; avatar_url: string | null; role?: 'user' | 'admin' } | null
@@ -175,6 +186,7 @@ function mapPost(row: PostRow): CommunityPost {
     likeCount: row.likes?.[0]?.count ?? 0,
     commentCount: row.comments?.[0]?.count ?? 0,
     presetData: row.preset_data ?? null,
+    projectUrl: row.project_url ?? null,
   }
 }
 
@@ -488,6 +500,26 @@ export async function uploadPostImage(userId: string, image: Blob): Promise<{ di
 }
 
 /**
+ * Uploads a serialized post project snapshot (see engine/project.ts's
+ * serializePostProjectSnapshot) to the `posts` bucket, next to the post's
+ * images — same per-user-folder convention, just a `.json` file instead of
+ * a `.png`/`.jpg`. Requires the bucket's allowed_mime_types to include
+ * `application/json` (see supabase/project_snapshot_migration.sql) or this
+ * throws a storage policy error.
+ */
+export async function uploadPostProject(userId: string, project: string): Promise<string> {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const path = `${userId}/${newId()}_project.json`
+  const { error } = await supabase.storage
+    .from(POSTS_BUCKET)
+    .upload(path, new Blob([project], { type: 'application/json' }), {
+      contentType: 'application/json', cacheControl: '31536000',
+    })
+  if (error) throw error
+  return supabase.storage.from(POSTS_BUCKET).getPublicUrl(path).data.publicUrl
+}
+
+/**
  * `image` is optional so the Community page's caption-only publish flow
  * (no canvas to render from) still works exactly as before; the editor's
  * Final-tab publish button passes the rendered composition through.
@@ -496,12 +528,20 @@ export async function uploadPostImage(userId: string, image: Blob): Promise<{ di
  * it's the active layer's effects+seed at the moment of publishing, stored
  * as-is (jsonb) so anyone can later load the exact same processing via
  * PostPresetChip -> state/store.ts's importPreset.
+ *
+ * `projectSnapshot` is the full serialized project (already JSON.stringify'd
+ * by the caller — see RightPanel.tsx's onPublishClick), likewise editor-only.
+ * It's uploaded alongside the image rather than inlined into the row so a
+ * multi-layer project's bitmaps — which can be sizeable — don't bloat every
+ * `posts` query; only "Скачать проект" ever needs to fetch it.
  */
 export async function createPost(
   authorId: string, title: string, image?: Blob | null, presetData?: PostPresetData | null,
+  projectSnapshot?: string | null,
 ): Promise<void> {
   if (!supabase) return
   const uploaded = image ? await uploadPostImage(authorId, image) : null
+  const projectUrl = projectSnapshot ? await uploadPostProject(authorId, projectSnapshot) : null
   const { error } = await supabase
     .from('posts')
     .insert({
@@ -509,6 +549,7 @@ export async function createPost(
       image_url: uploaded?.displayUrl ?? null,
       full_image_url: uploaded?.fullUrl ?? null,
       preset_data: presetData ?? null,
+      project_url: projectUrl,
     })
   if (error) throw error
 }

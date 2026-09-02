@@ -239,7 +239,17 @@ export function saveProject(): void {
 // ---------------------------------------------------------------------------
 
 export async function loadProjectFromText(text: string): Promise<void> {
-  const data = JSON.parse(text) as ProjectFile
+  const parsed = JSON.parse(text) as ProjectFile | PostProjectSnapshot
+  // A downloaded post's project (see DownloadProjectButton.tsx / this
+  // file's serializePostProjectSnapshot) is a leaner sibling format of a
+  // regular .nevma save — no undo/redo history, none of the author's
+  // session state. Route it to its own loader so "Открыть проект" works
+  // on both kinds of file transparently.
+  if (parsed.format === POST_SNAPSHOT_FORMAT) {
+    await applyPostProjectSnapshot(parsed as PostProjectSnapshot)
+    return
+  }
+  const data = parsed as ProjectFile
   if (data.format !== FORMAT) throw new Error('Not a Nevma project file')
 
   // Decode every unique bitmap once.
@@ -334,4 +344,153 @@ export async function loadProjectFromText(text: string): Promise<void> {
 export async function loadProjectFromFile(file: File): Promise<void> {
   const text = await file.text()
   await loadProjectFromText(text)
+}
+
+// ---------------------------------------------------------------------------
+// Post project snapshot — a trimmed-down sibling of the full .nevma format
+// above, used when publishing to the community (see RightPanel.tsx's
+// onPublishClick) and downloaded via DownloadProjectButton.tsx's "Скачать
+// проект". Captures the same layers/bitmaps/groups needed to reopen a real,
+// editable copy of the post, but drops what a full project file carries
+// that only matters for the ORIGINAL author's own session: undo/redo
+// history, language, the selected tool, the viewport, and saved
+// tool-parameter presets. Someone downloading and reopening a post isn't
+// resuming that person's editing session — just getting a clean copy of the
+// result — so none of that belongs in what gets uploaded and stored per
+// post. loadProjectFromText above accepts both formats, so opening a
+// downloaded post file works through the ordinary "Открыть проект" button.
+// ---------------------------------------------------------------------------
+
+const POST_SNAPSHOT_FORMAT = 'nevma-post-project'
+const POST_SNAPSHOT_VERSION = 1
+
+export interface PostProjectSnapshot {
+  format: typeof POST_SNAPSHOT_FORMAT
+  version: number
+  doc: DocumentMeta | null
+  groups: LayerGroup[]
+  layerGroups: Record<string, string>
+  collapsed: Record<string, boolean>
+  images: Record<string, string>
+  ops: Record<string, SheetOp>
+  snapshot: Snapshot
+}
+
+export function serializePostProjectSnapshot(): PostProjectSnapshot {
+  const images: Record<string, string> = {}
+  const bmpKeys = new Map<Bitmap, string>()
+  let bmpN = 0
+  const keyForBitmap = (bmp: Bitmap): string => {
+    const existing = bmpKeys.get(bmp)
+    if (existing) return existing
+    const key = `b${bmpN++}`
+    bmpKeys.set(bmp, key)
+    images[key] = bitmapToDataURL(bmp)
+    return key
+  }
+  const ops: Record<string, SheetOp> = {}
+  const opKeys = new Map<SheetOp, string>()
+  let opN = 0
+  const keyForOp = (op: SheetOp): string => {
+    const existing = opKeys.get(op)
+    if (existing) return existing
+    const key = `o${opN++}`
+    opKeys.set(op, key)
+    ops[key] = clone(op)
+    return key
+  }
+
+  const s = useStore.getState()
+  const originals: Record<string, string> = {}
+  const sources: Record<string, string> = {}
+  const cuts: Record<string, CutInfoData> = {}
+  const opsRefs: Record<string, string[]> = {}
+  for (const id of s.layerOrder) {
+    const orig = originalBitmaps.get(id)
+    if (orig) originals[id] = keyForBitmap(orig)
+    const src = sourceBitmaps.get(id)
+    if (src) sources[id] = keyForBitmap(src)
+    const ci = cutInfo.get(id)
+    if (ci) {
+      cuts[id] = {
+        sourceKey: keyForBitmap(ci.source), maskKey: keyForBitmap(ci.mask),
+        width: ci.width, height: ci.height, invert: ci.invert,
+        style: ci.style, seed: ci.seed, crop: ci.crop,
+      }
+    }
+    const list = sheetOps.get(id)
+    if (list && list.length) opsRefs[id] = list.map(keyForOp)
+  }
+
+  return {
+    format: POST_SNAPSHOT_FORMAT,
+    version: POST_SNAPSHOT_VERSION,
+    doc: s.doc,
+    groups: clone(s.groups),
+    layerGroups: clone(s.layerGroups),
+    collapsed: clone(s.collapsed),
+    images,
+    ops,
+    snapshot: {
+      layerOrder: [...s.layerOrder],
+      layers: clone(s.layers),
+      activeLayerId: s.activeLayerId,
+      activeGroupId: s.activeGroupId,
+      originals, sources, cutInfo: cuts, sheetOps: opsRefs,
+    },
+  }
+}
+
+/**
+ * Applies a post's saved project snapshot as a brand-new editor project —
+ * the same "replace what's currently open" behaviour as the rest of
+ * loadProjectFromText — called from there when a downloaded file turns out
+ * to be this lighter format instead of a full .nevma save.
+ */
+export async function applyPostProjectSnapshot(data: PostProjectSnapshot): Promise<void> {
+  if (data.format !== POST_SNAPSHOT_FORMAT) throw new Error('Not a Nevma post project snapshot')
+
+  const registry = new Map<string, HTMLCanvasElement>()
+  await Promise.all(
+    Object.entries(data.images).map(async ([key, url]) => {
+      registry.set(key, await dataURLToCanvas(url))
+    }),
+  )
+
+  const snap = data.snapshot
+  originalBitmaps.clear()
+  sourceBitmaps.clear()
+  cutInfo.clear()
+  sheetOps.clear()
+  for (const id of snap.layerOrder) {
+    const ok = snap.originals[id]
+    if (ok && registry.has(ok)) originalBitmaps.set(id, registry.get(ok)!)
+    const sk = snap.sources[id]
+    if (sk && registry.has(sk)) sourceBitmaps.set(id, registry.get(sk)!)
+    const ci = snap.cutInfo[id]
+    if (ci && registry.has(ci.sourceKey) && registry.has(ci.maskKey)) {
+      cutInfo.set(id, {
+        source: registry.get(ci.sourceKey)!, mask: registry.get(ci.maskKey)!,
+        width: ci.width, height: ci.height, invert: ci.invert,
+        style: ci.style, seed: ci.seed, crop: ci.crop,
+      })
+    }
+    const opKeys = snap.sheetOps[id]
+    if (opKeys && opKeys.length) sheetOps.set(id, opKeys.map((k) => clone(data.ops[k])))
+  }
+
+  useStore.setState({
+    doc: data.doc,
+    groups: clone(data.groups),
+    layerGroups: clone(data.layerGroups),
+    collapsed: clone(data.collapsed),
+    layers: clone(snap.layers),
+    layerOrder: [...snap.layerOrder],
+    activeLayerId: snap.activeLayerId,
+    activeGroupId: snap.activeGroupId,
+    bakeToken: Object.fromEntries(snap.layerOrder.map((id) => [id, 1])),
+    history: { past: [], future: [] },
+    canUndo: false,
+    canRedo: false,
+  })
 }

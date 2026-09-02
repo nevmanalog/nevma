@@ -14,9 +14,7 @@ export type ImageSource = HTMLImageElement | HTMLCanvasElement
 
 /** Decodes an already-fetched Blob/File into an image source, downscaling
  *  first if it exceeds MAX_DIMENSION on its longest side. Always releases
- *  the temporary object URL it creates. Shared by loadImageFile (local
- *  picker) and loadImageFromUrl (remixing a community post's image) so
- *  the size cap and downscaling logic can't drift between the two. */
+ *  the temporary object URL it creates. */
 function decodeImageBlob(
   blob: Blob,
   onImage: (source: ImageSource, width: number, height: number) => void,
@@ -60,29 +58,4 @@ export function loadImageFile(
   onError?: (err: unknown) => void,
 ) {
   decodeImageBlob(file, onImage, onError)
-}
-
-/**
- * Same as `loadImageFile`, but starting from a URL instead of a local File —
- * used to remix a community post's image (see pages/community/remix.ts).
- * Fetches the bytes first rather than pointing an <img> straight at the
- * (cross-origin, Supabase Storage) URL: an <img> loaded cross-origin
- * without the right CORS headers taints any <canvas> it's later drawn
- * into, which breaks everything downstream that reads pixels back out
- * (the whole physical-tool pipeline). Decoding from a same-origin blob: URL
- * instead, after fetching the bytes ourselves, avoids that regardless of
- * how the origin's CORS is configured.
- */
-export function loadImageFromUrl(
-  url: string,
-  onImage: (source: ImageSource, width: number, height: number) => void,
-  onError?: (err: unknown) => void,
-) {
-  fetch(url)
-    .then((res) => {
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
-      return res.blob()
-    })
-    .then((blob) => decodeImageBlob(blob, onImage, onError))
-    .catch((err) => onError?.(err))
 }

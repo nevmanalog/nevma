@@ -15,7 +15,7 @@ import { NotificationsBell } from './community/NotificationsBell'
 import { PublishModal } from './community/PublishModal'
 import { PostModal } from './community/PostModal'
 import { PostPresetChip } from './community/PostPresetChip'
-import { RemixButton } from './community/RemixButton'
+import { DownloadProjectButton } from './community/DownloadProjectButton'
 import { MOCK_POSTS } from './community/mockData'
 
 type SortMode = 'popular' | 'recent'
@@ -290,7 +290,7 @@ export function Community() {
                     >
                       💬 {commentCount}
                     </button>
-                    {hasProfile && <RemixButton post={post as CommunityPost} className="feed-card-remix-btn" />}
+                    {hasProfile && <DownloadProjectButton post={post as CommunityPost} className="feed-card-download-btn" />}
                     {hasProfile && <PostPresetChip post={post as CommunityPost} className="feed-card-preset-chip" />}
                   </div>
                 </div>

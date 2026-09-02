@@ -17,6 +17,7 @@ import { useAuth } from '@/state/auth'
 import { createPost } from '@/lib/community'
 import { PublishModal } from '@/pages/community/PublishModal'
 import { renderFinalImage } from '@/engine/exportLayers'
+import { serializePostProjectSnapshot } from '@/engine/project'
 import { canvasToPngBytes } from '@/shared/zip'
 import { WORKSHOP_TOOLS, activeWorkshopToolId, type WorkshopToolId } from './workshopTools'
 import { getPhysicalToolEngine } from '@/engine/tools/registry'
@@ -814,6 +815,7 @@ export function RightPanel() {
   const [publishOpen, setPublishOpen] = useState(false)
   const [publishBlob, setPublishBlob] = useState<Blob | null>(null)
   const [publishPreset, setPublishPreset] = useState<{ effects: Layer['effects']; seed: number } | null>(null)
+  const [publishProjectSnapshot, setPublishProjectSnapshot] = useState<string | null>(null)
   const [preparingPublish, setPreparingPublish] = useState(false)
   const user = useAuth((s) => s.user)
   const openAuthModal = useAuth((s) => s.openAuthModal)
@@ -836,6 +838,13 @@ export function RightPanel() {
       // preset (state/store.ts's SavedPreset), just without a name yet.
       const layer = activeId ? useStore.getState().layers[activeId] : null
       setPublishPreset(layer ? { effects: JSON.parse(JSON.stringify(layer.effects)), seed: layer.seed } : null)
+      // Full layer snapshot (bitmaps, transforms, groups — everything
+      // "Посмотреть проект" needs to reopen an editable copy laid out
+      // exactly like this one) — see engine/project.ts. Stringified here
+      // rather than in community.ts so this stays symmetric with publishBlob
+      // above: RightPanel captures the editor-only data, community.ts just
+      // uploads whatever it's handed.
+      setPublishProjectSnapshot(JSON.stringify(serializePostProjectSnapshot()))
       setPublishOpen(true)
     } finally {
       setPreparingPublish(false)
@@ -885,7 +894,7 @@ export function RightPanel() {
         previewBlob={publishBlob}
         onClose={() => setPublishOpen(false)}
         onPublish={async (title) => {
-          await createPost(user.id, title, publishBlob, publishPreset)
+          await createPost(user.id, title, publishBlob, publishPreset, publishProjectSnapshot)
           setPublishOpen(false)
         }}
       />
