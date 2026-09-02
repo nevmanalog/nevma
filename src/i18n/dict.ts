@@ -183,6 +183,13 @@ export const DICT = {
     ru: 'Эта обработка сохранена у вас в редакторе. Откройте вкладку «Финал», чтобы её применить.',
   },
   presetSavedGo: { en: 'Go to editor', ru: 'Перейти в редактор' },
+  remix: { en: 'Remix', ru: 'Ремикс' },
+  remixHint: {
+    en: 'Load this photo into your editor as a new layer, to rework it yourself',
+    ru: 'Загрузить это фото к себе в редактор новым слоем и сделать свою версию',
+  },
+  remixLoading: { en: 'Loading…', ru: 'Загрузка…' },
+  remixFailed: { en: "Couldn't load this image for remixing.", ru: 'Не удалось загрузить фото для ремикса.' },
   loadSaved: { en: 'Load saved…', ru: 'Загрузить сохранённый…' },
   paperEngine: { en: 'Paper Engine', ru: 'Движок бумаги' },
   printEngine: { en: 'Print Engine', ru: 'Движок печати' },
@@ -837,6 +844,18 @@ export const DICT = {
   communityNoPostsYet: {
     en: 'No real posts published yet — showing a preview feed below.',
     ru: 'Реальных постов пока нет — ниже показана демо-лента для примера.',
+  },
+  communityNoMatches: {
+    en: 'No posts match these filters.',
+    ru: 'По этим фильтрам ничего не найдено.',
+  },
+  filterPaperAll: { en: 'Any paper', ru: 'Любая бумага' },
+  filterPrinterAll: { en: 'Any printer', ru: 'Любой принтер' },
+  feedScopeAll: { en: 'For you', ru: 'Для вас' },
+  feedScopeFollowing: { en: 'Following', ru: 'Подписки' },
+  feedScopeFollowingEmpty: {
+    en: "You're not following anyone yet — follow some authors to see their posts here.",
+    ru: 'Вы пока ни на кого не подписаны — подпишитесь на авторов, чтобы видеть их посты здесь.',
   },
   publishTitle: { en: 'Publish', ru: 'Опубликовать' },
   publishBody: { en: 'Give it a short caption.', ru: 'Добавьте короткую подпись.' },

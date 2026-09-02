@@ -6,6 +6,7 @@ import {
   type CommunityPost, type CommunityComment,
 } from '@/lib/community'
 import { PostPresetChip } from './PostPresetChip'
+import { RemixButton } from './RemixButton'
 
 interface Props {
   post: CommunityPost
@@ -287,6 +288,7 @@ export function PostModal({
               ♥ {post.likeCount}
             </button>
             <span className="ig-action-btn">💬 {loadingComments ? post.commentCount : comments.length}</span>
+            <RemixButton post={post} className="post-modal-remix" />
             <button type="button" className="ig-action-btn post-modal-share" onClick={share}>
               {linkCopied ? `✓ ${t('postLinkCopied')}` : `🔗 ${t('postShare')}`}
             </button>

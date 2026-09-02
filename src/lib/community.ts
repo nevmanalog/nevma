@@ -121,6 +121,22 @@ export async function unfollow(followerId: string, targetId: string): Promise<vo
   if (error) throw error
 }
 
+/** Ids of everyone `userId` follows — used to build the "Following" feed
+ *  scope. A separate round trip rather than a single joined query because
+ *  PostgREST can't express "posts where author_id in (subquery)" without
+ *  either a database view/RPC or fetching the id list client-side first;
+ *  the extra request is cheap (this table has no other columns to embed)
+ *  and keeps the filtering logic next to fetchFollowingFeedPosts below
+ *  instead of splitting it across a SQL view someone has to remember to
+ *  keep in sync with the schema. */
+export async function fetchFollowingIds(userId: string): Promise<string[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase.from('follows').select('following_id').eq('follower_id', userId)
+  if (error) { console.error('[community] fetchFollowingIds failed:', error.message); return [] }
+  return (data ?? []).map((row) => row.following_id as string)
+}
+
+
 // `profiles` is embedded via the posts.author_id -> profiles.id foreign key,
 // so PostgREST resolves the join automatically from the relationship name.
 // `likes(count)` / `comments(count)` are PostgREST's aggregate-embed syntax —
@@ -170,6 +186,28 @@ export async function fetchFeedPosts(limit = 30): Promise<CommunityPost[]> {
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) console.error('[community] fetchFeedPosts failed:', error.message)
+  if (error || !data) return []
+  return (data as unknown as PostRow[]).map(mapPost)
+}
+
+/** Same shape as fetchFeedPosts, but only posts by people `userId` follows
+ *  — the "Following" feed scope (see Community.tsx). Two round trips
+ *  (follow list, then the posts themselves) rather than one — see
+ *  fetchFollowingIds' own comment for why. Empty following list short-
+ *  circuits before the second request, since `.in('author_id', [])` would
+ *  otherwise still be a request just to learn what an empty array already
+ *  told us: no posts to show. */
+export async function fetchFollowingFeedPosts(userId: string, limit = 30): Promise<CommunityPost[]> {
+  if (!supabase) return []
+  const ids = await fetchFollowingIds(userId)
+  if (ids.length === 0) return []
+  const { data, error } = await supabase
+    .from('posts')
+    .select(POST_SELECT)
+    .in('author_id', ids)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) console.error('[community] fetchFollowingFeedPosts failed:', error.message)
   if (error || !data) return []
   return (data as unknown as PostRow[]).map(mapPost)
 }

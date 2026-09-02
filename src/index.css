@@ -1572,7 +1572,8 @@ input[type='range']::-moz-range-thumb {
 }
 .community-latest-title { margin: 0 0 4px; font-size: 16px; color: var(--text); }
 .community-latest-subtitle { margin: 0; font-size: 12px; color: var(--text-dim); }
-.community-latest-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.community-latest-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.community-feed-scope { max-width: 1080px; margin: 14px auto 0; padding: 0 16px; }
 .community-sort-select { width: auto; padding: 6px 8px; font-size: 12px; }
 .community-publish-hint-row { max-width: 1080px; margin: 4px auto 0; padding: 0 16px; text-align: left; }
 

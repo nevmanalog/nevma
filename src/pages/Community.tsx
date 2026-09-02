@@ -7,13 +7,15 @@ import { useT } from '@/i18n'
 import { useRoute } from '@/state/route'
 import { useAuth } from '@/state/auth'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import { fetchFeedPosts, fetchLikedPostIds, likePost, unlikePost, isPostLiked, fetchLikeCount, createPost, fetchPostById, type CommunityPost } from '@/lib/community'
+import { fetchFeedPosts, fetchFollowingFeedPosts, fetchLikedPostIds, likePost, unlikePost, isPostLiked, fetchLikeCount, createPost, fetchPostById, type CommunityPost } from '@/lib/community'
+import { PAPER_TYPES, PRINTER_TYPES, type PaperType, type PrinterType } from '@/domain/params'
 import { useToast } from '@/state/toast'
 import { AuthWidget } from './community/AuthWidget'
 import { NotificationsBell } from './community/NotificationsBell'
 import { PublishModal } from './community/PublishModal'
 import { PostModal } from './community/PostModal'
 import { PostPresetChip } from './community/PostPresetChip'
+import { RemixButton } from './community/RemixButton'
 import { MOCK_POSTS } from './community/mockData'
 
 type SortMode = 'popular' | 'recent'
@@ -54,14 +56,31 @@ export function Community() {
   const [deepLinkedPosts, setDeepLinkedPosts] = useState<Record<string, CommunityPost>>({})
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortMode>('recent')
+  // Style filters — read straight off `preset_data.effects` (only present on
+  // posts published from the editor's Final tab), so unlike search/sort this
+  // silently excludes caption-only posts once a filter is active: there's no
+  // paper/printer to match against for those. Cheap to add because the
+  // taxonomy (PAPER_TYPES/PRINTER_TYPES) already exists in domain/params.ts
+  // for the editor's own dropdowns — filtering the feed by it needed no new
+  // data, just reusing what publishing from the editor already captures.
+  const [paperFilter, setPaperFilter] = useState<PaperType | 'all'>('all')
+  const [printerFilter, setPrinterFilter] = useState<PrinterType | 'all'>('all')
+  // "For you" vs "Following" — mirrors Instagram/Twitter's split feed tabs.
+  // Forced back to 'all' on sign-out (see effect below) since a signed-out
+  // visitor has no follow list to scope by.
+  const [feedScope, setFeedScope] = useState<'all' | 'following'>('all')
 
   const loadFeed = () => {
     if (!isSupabaseConfigured) return
     setLoadingFeed(true)
-    fetchFeedPosts().then((data) => { setPosts(data); setLoadingFeed(false) })
+    const fetchPromise = feedScope === 'following' && user
+      ? fetchFollowingFeedPosts(user.id)
+      : fetchFeedPosts()
+    fetchPromise.then((data) => { setPosts(data); setLoadingFeed(false) })
   }
 
-  useEffect(loadFeed, [])
+  useEffect(loadFeed, [feedScope, user])
+  useEffect(() => { if (!user) setFeedScope('all') }, [user])
 
   // Which posts the signed-in user has already liked — refetched whenever
   // the feed or the signed-in user changes.
@@ -109,7 +128,7 @@ export function Community() {
     setPosts((ps) => ps.map((p) => (p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p)))
   }
 
-  const usingMocks = !isSupabaseConfigured || (!loadingFeed && posts.length === 0)
+  const usingMocks = feedScope === 'all' && (!isSupabaseConfigured || (!loadingFeed && posts.length === 0))
   const feed = usingMocks ? MOCK_POSTS : posts
   const openPost = posts.find((p) => p.id === openPostId) ?? (openPostId ? deepLinkedPosts[openPostId] : undefined) ?? null
 
@@ -139,12 +158,20 @@ export function Community() {
 
   const visibleFeed = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const filtered = q
-      ? feed.filter((p) => {
-          const author = 'authorName' in p ? p.authorName : p.author
-          return p.title.toLowerCase().includes(q) || author.toLowerCase().includes(q)
-        })
-      : feed
+    const stylesActive = paperFilter !== 'all' || printerFilter !== 'all'
+    const filtered = feed.filter((p) => {
+      if (q) {
+        const author = 'authorName' in p ? p.authorName : p.author
+        if (!p.title.toLowerCase().includes(q) && !author.toLowerCase().includes(q)) return false
+      }
+      if (stylesActive) {
+        const preset = 'presetData' in p ? p.presetData : null
+        if (!preset) return false
+        if (paperFilter !== 'all' && preset.effects.paperType !== paperFilter) return false
+        if (printerFilter !== 'all' && preset.effects.printerType !== printerFilter) return false
+      }
+      return true
+    })
     const sorted = [...filtered]
     if (sort === 'popular') {
       sorted.sort((a, b) => {
@@ -154,7 +181,10 @@ export function Community() {
       })
     }
     return sorted
-  }, [feed, search, sort])
+  }, [feed, search, sort, paperFilter, printerFilter])
+  const noFollowingPosts = feedScope === 'following' && !loadingFeed && posts.length === 0
+  const noMatches = !loadingFeed && !usingMocks && !noFollowingPosts && visibleFeed.length === 0
+    && (search.trim() !== '' || paperFilter !== 'all' || printerFilter !== 'all')
 
   return (
     <div className="landing-window">
@@ -168,12 +198,30 @@ export function Community() {
       <CommunityNav active="feed" search={search} onSearch={setSearch} />
 
       <div className="community-scroll">
+        {user && (
+          <div className="community-feed-scope np-seg">
+            <button className={feedScope === 'all' ? 'active' : ''} onClick={() => setFeedScope('all')}>
+              {t('feedScopeAll')}
+            </button>
+            <button className={feedScope === 'following' ? 'active' : ''} onClick={() => setFeedScope('following')}>
+              {t('feedScopeFollowing')}
+            </button>
+          </div>
+        )}
         <div className="community-latest-row">
           <div>
             <h2 className="community-latest-title">{t('communityLatestTitle')}</h2>
             <p className="community-latest-subtitle">{t('communityLatestSubtitle')}</p>
           </div>
           <div className="community-latest-actions">
+            <select className="select community-sort-select" value={paperFilter} onChange={(ev) => setPaperFilter(ev.target.value as PaperType | 'all')}>
+              <option value="all">{t('filterPaperAll')}</option>
+              {PAPER_TYPES.map((p) => <option key={p.id} value={p.id}>{t(p.labelKey)}</option>)}
+            </select>
+            <select className="select community-sort-select" value={printerFilter} onChange={(ev) => setPrinterFilter(ev.target.value as PrinterType | 'all')}>
+              <option value="all">{t('filterPrinterAll')}</option>
+              {PRINTER_TYPES.map((p) => <option key={p.id} value={p.id}>{t(p.labelKey)}</option>)}
+            </select>
             <select className="select community-sort-select" value={sort} onChange={(ev) => setSort(ev.target.value as SortMode)}>
               <option value="recent">{t('sortRecent')}</option>
               <option value="popular">{t('sortPopular')}</option>
@@ -191,6 +239,14 @@ export function Community() {
 
         {usingMocks && isSupabaseConfigured && !loadingFeed && (
           <p className="profile-empty-hint">{t('communityNoPostsYet')}</p>
+        )}
+
+        {noFollowingPosts && (
+          <p className="profile-empty-hint">{t('feedScopeFollowingEmpty')}</p>
+        )}
+
+        {noMatches && (
+          <p className="profile-empty-hint">{t('communityNoMatches')}</p>
         )}
 
         <div className="feed-grid">
@@ -234,6 +290,7 @@ export function Community() {
                     >
                       💬 {commentCount}
                     </button>
+                    {hasProfile && <RemixButton post={post as CommunityPost} className="feed-card-remix-btn" />}
                     {hasProfile && <PostPresetChip post={post as CommunityPost} className="feed-card-preset-chip" />}
                   </div>
                 </div>
