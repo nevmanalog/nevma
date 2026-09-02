@@ -37,10 +37,19 @@ export function PublishModal({ onClose, onPublish, previewBlob }: Props) {
     if (!trimmed) { setError(t('publishTitleRequired')); return }
     setSaving(true)
     setError(null)
+    // A hard ceiling on the whole publish call so a stuck upload or a
+    // silently-never-resolving browser API (see createDisplayImage's
+    // canvas.toBlob comment in lib/community.ts) can't leave this button
+    // stuck on "Saving…" forever — the person always gets an error they
+    // can retry from instead of an infinite spinner.
+    let timedOut = false
     try {
-      await onPublish(trimmed, previewBlob ?? pickedFile ?? null)
+      const timeout = new Promise<never>((_, reject) => {
+        setTimeout(() => { timedOut = true; reject(new Error('publish timed out')) }, 20000)
+      })
+      await Promise.race([onPublish(trimmed, previewBlob ?? pickedFile ?? null), timeout])
     } catch {
-      setError(t('onboardingSaveFailed'))
+      setError(timedOut ? t('publishTimedOut') : t('onboardingSaveFailed'))
       setSaving(false)
     }
   }

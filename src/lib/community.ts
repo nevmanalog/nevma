@@ -436,7 +436,19 @@ async function createDisplayImage(source: Blob, maxDim = 1600, quality = 0.85): 
     ctx.fillRect(0, 0, w, h)
     ctx.drawImage(bitmap, 0, 0, w, h)
     bitmap.close()
-    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+    // canvas.toBlob's callback is known to silently never fire on some
+    // browsers/devices (WebKit in particular) once the canvas gets large —
+    // and the source here is a full-working-resolution render that "can run
+    // into several MB" (see the doc comment above). Without a timeout, that
+    // leaves the caller's promise pending forever, which is exactly what
+    // made the whole publish flow look like it was "saving" indefinitely.
+    // Race it against a timeout and fall back to the original blob instead.
+    const blob: Blob | null = await new Promise((resolve) => {
+      let settled = false
+      const done = (b: Blob | null) => { if (!settled) { settled = true; resolve(b) } }
+      canvas.toBlob((b) => done(b), 'image/jpeg', quality)
+      setTimeout(() => done(null), 8000)
+    })
     return blob ?? source
   } catch (err) {
     console.error('[community] createDisplayImage failed, uploading original instead:', err)

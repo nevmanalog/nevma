@@ -183,7 +183,7 @@ export const DICT = {
     ru: 'Эта обработка сохранена у вас в редакторе. Откройте вкладку «Финал», чтобы её применить.',
   },
   presetSavedGo: { en: 'Go to editor', ru: 'Перейти в редактор' },
-  remix: { en: 'Remix', ru: 'Ремикс' },
+  remix: { en: 'View project', ru: 'Посмотреть проект' },
   remixHint: {
     en: 'Load this photo into your editor as a new layer, to rework it yourself',
     ru: 'Загрузить это фото к себе в редактор новым слоем и сделать свою версию',
@@ -863,6 +863,10 @@ export const DICT = {
   publishPickImage: { en: 'Choose an image', ru: 'Выбрать картинку' },
   publishPlaceholder: { en: 'e.g. Faded polaroid look', ru: 'например, Выцветший полароид' },
   publishTitleRequired: { en: 'Please enter a caption.', ru: 'Введите подпись.' },
+  publishTimedOut: {
+    en: 'Publishing is taking too long. Check your connection and try again.',
+    ru: 'Публикация занимает слишком много времени. Проверьте соединение и попробуйте ещё раз.',
+  },
   publishSubmit: { en: 'Publish', ru: 'Опубликовать' },
 
   // post modal (full post + comments)
